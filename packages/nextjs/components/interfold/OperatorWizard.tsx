@@ -5,7 +5,7 @@ import { ActionButtons } from "./ActionButtons";
 import { BatchPanel } from "./BatchPanel";
 import { ExitPanel } from "./ExitPanel";
 import { statusPill } from "./FleetTable";
-import { AddressLink, Badge, CopyButton, Dl, Field, Note, Step, type StepState } from "./ui";
+import { AddressLink, Badge, CommandBlock, CopyButton, Dl, Field, Note, Step, type StepState } from "./ui";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address, formatUnits, parseEther, zeroAddress } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
@@ -365,20 +365,25 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
           {s && s.bondOwner === zeroAddress && (
             <>
               {mode === "self" ? (
-                <Note kind="warn">
-                  On your node, run <code>{cli}</code> <CopyButton text={cli} label="Copy command" /> — it is sent by
-                  your operator key and needs a little ETH for gas. Or connect the node&apos;s hot wallet here and sign{" "}
-                  <code>setBondOwner</code> directly. This step advances by itself once the transaction lands; nothing
-                  can be bonded before it.
-                </Note>
+                <>
+                  <Note kind="warn">
+                    Run this on your node. It is sent by your operator key and needs a little ETH for gas. Or connect
+                    the node&apos;s hot wallet here and sign <code>setBondOwner</code> directly. This step advances by
+                    itself once the transaction lands; nothing can be bonded before it.
+                  </Note>
+                  <CommandBlock command={cli} />
+                </>
               ) : (
                 <>
                   <Note kind="warn">
-                    Waiting for the node operator. They must run <code>{cli}</code>{" "}
-                    <CopyButton text={cli} label="Copy command" /> on their node (it is sent by their operator key and
-                    needs a little ETH for gas). This step advances by itself once that transaction lands — nothing can
-                    be bonded before it. <CopyButton text={instructions} label="Copy full instructions for them" />
+                    Waiting for the node operator. They must run the command below on their node (it is sent by their
+                    operator key and needs a little ETH for gas). This step advances by itself once that transaction
+                    lands — nothing can be bonded before it.
                   </Note>
+                  <CommandBlock command={cli} />
+                  <div className="if-actions">
+                    <CopyButton text={instructions} label="Copy full instructions for them" className="if-btn--sm" />
+                  </div>
                   <Note>
                     If <em>you</em> run this node, connect its hot wallet here instead and sign{" "}
                     <code>setBondOwner</code> directly.

@@ -213,3 +213,14 @@ export const Disclosure = ({
     </div>
   );
 };
+
+/** A shell command on its own line with the copy control beside it (never inline in prose). */
+export const CommandBlock = ({ command, label = "Copy" }: { command: string; label?: string }) => (
+  <div className="if-cmd">
+    <span className="if-cmd__prompt" aria-hidden="true">
+      $
+    </span>
+    <code className="if-cmd__code">{command}</code>
+    <CopyButton text={command} label={label} />
+  </div>
+);

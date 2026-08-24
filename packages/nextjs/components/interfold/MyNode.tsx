@@ -5,7 +5,7 @@ import { ConnectCta } from "./ConnectGate";
 import { NetworkPulse } from "./NetworkPulse";
 import { OperatorWizard } from "./OperatorWizard";
 import { ParamsStrip } from "./ParamsStrip";
-import { AddressLink, Badge, CopyButton, Empty, Field, Loader, Note } from "./ui";
+import { AddressLink, Badge, CommandBlock, Empty, Field, Loader, Note } from "./ui";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address } from "viem";
 import { useEnsAddress, useEnsName } from "wagmi";
@@ -247,10 +247,11 @@ const Inner = () => {
           <section className="if-card">
             <div className="if-eyebrow">Your node</div>
             <h2 className="if-card__title">Which operator key does your ciphernode sign with?</h2>
+            <p className="if-card__body">On the machine running the node, print its operator key:</p>
+            <CommandBlock command="interfold wallet get" />
             <p className="if-card__body">
-              On the machine running the node: <code>interfold wallet get</code>
-              <CopyButton text="interfold wallet get" label="Copy" className="if-btn--xs" />. Keep that hot wallet
-              funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it — the Safe posts those.
+              Keep that hot wallet funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it — the
+              Safe posts those.
             </p>
             <div className="if-fields" style={{ marginTop: 18 }}>
               <Field

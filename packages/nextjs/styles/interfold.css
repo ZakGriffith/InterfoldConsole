@@ -1295,3 +1295,36 @@
     transition: none !important;
   }
 }
+
+/* ---- command block ---- */
+.if-cmd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 680px;
+  padding: 8px 10px 8px 14px;
+  background: var(--if-paper);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius);
+  font-family: var(--if-mono);
+  font-size: 13px;
+}
+.if-cmd__prompt {
+  color: var(--if-accent-deep);
+  font-weight: 600;
+  flex: none;
+}
+.if-page .if-cmd__code {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--if-ink);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.if-cmd .if-btn {
+  flex: none;
+}
