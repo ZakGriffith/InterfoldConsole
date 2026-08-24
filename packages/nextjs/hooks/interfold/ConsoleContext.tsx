@@ -3,17 +3,18 @@
 import { type ReactNode, createContext, useContext, useMemo, useState } from "react";
 import { type Address, zeroAddress } from "viem";
 import { useReadContract } from "wagmi";
+import { ConnectGate, OwnerPrompt } from "~~/components/interfold/ConnectGate";
 import { type ConnectionMode, useIsSafeAccount } from "~~/hooks/interfold/useIsSafeAccount";
 import { type OwnerFunds, useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { type RegistryParams, useRegistryParams } from "~~/hooks/interfold/useRegistryParams";
-import { CHAIN_ID, DEFAULT_BOND_OWNER, REGISTRY } from "~~/utils/interfold/contracts";
+import { CHAIN_ID, REGISTRY } from "~~/utils/interfold/contracts";
 import { sameAddr } from "~~/utils/interfold/format";
 
-export type OwnerSource = "override" | "connected" | "operator-of-connected" | "default";
+export type OwnerSource = "override" | "connected" | "operator-of-connected";
 
 export type ConsoleState = {
-  /** Connected wallet (any mode). */
-  connected?: Address;
+  /** Connected wallet (any mode). Always defined inside the provider: nothing renders without one. */
+  connected: Address;
   connMode: ConnectionMode;
   isSafe: boolean;
   onMainnet: boolean;
@@ -34,11 +35,18 @@ export type ConsoleState = {
 
 const Ctx = createContext<ConsoleState | null>(null);
 
-export const ConsoleProvider = ({ children }: { children: ReactNode }) => {
+/**
+ * Resolves who the bond owner is and gates everything behind a connected wallet:
+ *  - nothing connected           → ConnectGate (no addresses, no fleet: the page is public)
+ *  - Safe / contract account     → it is the owner
+ *  - plain key already named a bond owner on-chain (a node's hot wallet) → follow it to that owner
+ *  - plain key with no owner     → OwnerPrompt: type the Safe it should authorize (browser-local)
+ * There is deliberately no default owner: nothing identifies a specific Safe before it connects.
+ */
+export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?: ReactNode }) => {
   const acct = useIsSafeAccount();
   const [override, setOwnerOverride] = useState<Address | undefined>();
 
-  // If a hot wallet connects, follow it to its bond owner so the Safe's fleet shows up automatically.
   const { data: ownerOfConnected } = useReadContract({
     address: REGISTRY.address,
     abi: REGISTRY.abi,
@@ -48,22 +56,34 @@ export const ConsoleProvider = ({ children }: { children: ReactNode }) => {
     query: { enabled: !!acct.address && acct.mode === "eoa" },
   });
 
-  const { owner, ownerSource } = useMemo<{ owner: Address; ownerSource: OwnerSource }>(() => {
+  const resolved = useMemo<{ owner: Address; ownerSource: OwnerSource } | undefined>(() => {
     if (override) return { owner: override, ownerSource: "override" };
-    if (acct.address && acct.onMainnet) {
-      if (acct.mode === "eoa" && ownerOfConnected && ownerOfConnected !== zeroAddress) {
+    if (!acct.address) return undefined;
+    if (acct.mode === "eoa") {
+      if (ownerOfConnected && ownerOfConnected !== zeroAddress)
         return { owner: ownerOfConnected, ownerSource: "operator-of-connected" };
-      }
+      if (acct.isCheckingBytecode) return undefined;
       return { owner: acct.address, ownerSource: "connected" };
     }
-    return { owner: DEFAULT_BOND_OWNER, ownerSource: "default" };
-  }, [override, acct.address, acct.onMainnet, acct.mode, ownerOfConnected]);
+    return { owner: acct.address, ownerSource: "connected" };
+  }, [override, acct.address, acct.mode, acct.isCheckingBytecode, ownerOfConnected]);
 
   const params = useRegistryParams();
-  const funds = useOwnerFunds(owner);
+  const funds = useOwnerFunds(resolved?.owner);
 
-  const canWriteAsOwner = !!acct.address && acct.onMainnet && sameAddr(acct.address, owner);
-  const operatorMode = !!acct.address && acct.mode === "eoa" && !sameAddr(acct.address, owner);
+  if (!acct.address || !acct.isConnected || !resolved) return <>{gate ?? <ConnectGate />}</>;
+
+  const { owner, ownerSource } = resolved;
+  const canWriteAsOwner = acct.onMainnet && sameAddr(acct.address, owner);
+  const operatorMode = acct.mode === "eoa" && !sameAddr(acct.address, owner);
+  // A plain key that owns nothing and runs no known node is most likely a hot wallet before
+  // set-bond-owner: ask which Safe it should authorize instead of treating it as a bond owner.
+  const needsOwnerPrompt =
+    acct.mode === "eoa" &&
+    ownerSource === "connected" &&
+    funds.data !== undefined &&
+    funds.data.totalBonded === 0n &&
+    funds.data.foldBalance === 0n;
 
   const value: ConsoleState = {
     connected: acct.address,
@@ -81,6 +101,8 @@ export const ConsoleProvider = ({ children }: { children: ReactNode }) => {
     funds: funds.data,
     fundsLoading: funds.isLoading,
   };
+
+  if (needsOwnerPrompt) return <OwnerPrompt connected={acct.address} onPick={setOwnerOverride} />;
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

@@ -16,26 +16,27 @@
 @plugin "daisyui/theme" {
   name: "light";
 
-  --color-primary: #93bbfb;
-  --color-primary-content: #212638;
-  --color-secondary: #dae8ff;
-  --color-secondary-content: #212638;
-  --color-accent: #93bbfb;
-  --color-accent-content: #212638;
-  --color-neutral: #212638;
-  --color-neutral-content: #ffffff;
+  /* Interfold paper / ink palette so /debug matches the console. */
+  --color-primary: #14201b;
+  --color-primary-content: #ffffff;
+  --color-secondary: #e8faf0;
+  --color-secondary-content: #163d2c;
+  --color-accent: #1f6b4a;
+  --color-accent-content: #ffffff;
+  --color-neutral: #2c3833;
+  --color-neutral-content: #f7f5ee;
   --color-base-100: #ffffff;
-  --color-base-200: #f4f8ff;
-  --color-base-300: #dae8ff;
-  --color-base-content: #212638;
-  --color-info: #93bbfb;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
+  --color-base-200: #f7f5ee;
+  --color-base-300: #e3e7e2;
+  --color-base-content: #14201b;
+  --color-info: #cdeede;
+  --color-success: #1f7a45;
+  --color-warning: #c07a44;
+  --color-error: #b23a36;
 
-  --radius-field: 0rem;
-  --radius-box: 0rem;
-  --radius-selector: 0rem;
+  --radius-field: 0.625rem;
+  --radius-box: 0.875rem;
+  --radius-selector: 999rem;
 
   --tt-tailw: 6px;
 }
@@ -117,4 +118,56 @@
 
 .link:hover {
   opacity: 80%;
+}
+
+/* ---- /debug (Contracts tab): re-skin @scaffold-ui/debug-contracts to the Interfold look ---- */
+.if-page {
+  /* "primary" is a light surface in this widget (SE-2 pale blue) with dark text on it: keep it light. */
+  --color-sui-primary: #cdeede;
+  --color-sui-primary-content: #163d2c;
+  --color-sui-primary-subtle: #e8faf0;
+  --color-sui-primary-neutral: #f7f5ee;
+  --color-sui-accent: #1f6b4a;
+  --color-sui-base-100: #ffffff;
+  --color-sui-base-content: #14201b;
+  --color-sui-neutral: #f7f5ee;
+  --color-sui-neutral-content: #14201b;
+  --color-sui-input-border: #e3e7e2;
+  --color-sui-input-text: #14201b;
+  --color-sui-skeleton-base: #eef1ec;
+  --color-sui-skeleton-highlight: #f7f5ee;
+}
+.if-page .border-sui-primary-subtle {
+  border-radius: 14px;
+}
+.if-page .bg-sui-primary-neutral {
+  border-radius: 10px;
+}
+.if-page .bg-sui-primary-subtle.absolute {
+  border-radius: 12px 12px 0 0;
+  box-shadow: none;
+}
+.if-page .btn-dc,
+.if-page .btn {
+  border-radius: 999px;
+}
+.if-page .rounded,
+.if-page input:not([type="checkbox"]):not([type="radio"]),
+.if-page textarea,
+.if-page select,
+.if-page .input,
+.if-page .textarea,
+.if-page .select {
+  border-radius: 10px;
+}
+.if-page .sui-skeleton,
+.if-page .tooltip:before,
+.if-page .badge {
+  border-radius: 999px;
+}
+.if-page .shadow-md,
+.if-page .shadow-lg {
+  box-shadow:
+    0 1px #14201b05,
+    0 12px 32px -20px #14201b2e;
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
 import { FleetTable, batchable, needsAttention, statusPill } from "./FleetTable";
+import { NetworkPulse } from "./NetworkPulse";
 import { OnboardCard } from "./OnboardCard";
 import { OperatorWizard } from "./OperatorWizard";
 import { ParamsStrip } from "./ParamsStrip";
@@ -72,7 +73,7 @@ const Inner = () => {
     <main className="if-main">
       <div className="if-guide">
         <header className="if-guide__head">
-          <div className="if-eyebrow">Ciphernode operators</div>
+          <div className="if-eyebrow">My nodes</div>
           <h1 className="if-guide__title">Run ciphernodes on Interfold, funded from one Safe.</h1>
           <p className="if-guide__lede">
             Ciphernodes hold key shares for encrypted computations and are selected into committees by sortition. To
@@ -97,6 +98,7 @@ const Inner = () => {
           <Loader label="Loading bonding parameters" sub={REGISTRY.address} />
         ) : (
           <>
+            <NetworkPulse />
             <ParamsStrip />
             <BondOwnerCard />
             <OnboardCard existing={list.operators} onStart={startOnboarding} />

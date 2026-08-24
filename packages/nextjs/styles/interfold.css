@@ -1170,3 +1170,122 @@
     margin-bottom: 8px;
   }
 }
+
+/* ---- network pulse (mirrors the dashboard's `netpulse`) ---- */
+.if-pulse {
+  width: 100%;
+}
+.if-pulse__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 540;
+  color: var(--if-ink-3);
+}
+.if-pulse__title {
+  color: var(--if-ink-2);
+}
+.if-pulse__net {
+  padding: 2px 9px;
+  border: 1px solid var(--if-rule);
+  border-radius: 999px;
+  background: var(--if-paper-2);
+  font-size: 11px;
+  color: var(--if-ink-3);
+}
+.if-pulse__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--if-paper-2);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+  overflow: hidden;
+  box-shadow:
+    0 1px #14201b05,
+    0 12px 32px -20px #14201b2e;
+}
+.if-pulse__tile {
+  padding: 20px 22px 18px;
+  min-width: 0;
+}
+.if-pulse__tile + .if-pulse__tile {
+  border-left: 1px solid var(--if-rule-soft);
+}
+.if-pulse__value {
+  font-size: 26px;
+  font-weight: 560;
+  color: var(--if-ink);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-family: var(--if-mono);
+  overflow-wrap: anywhere;
+}
+.if-pulse__label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--if-ink-3);
+}
+@media (max-width: 880px) {
+  .if-pulse__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .if-pulse__tile:nth-child(3) {
+    border-left: 0;
+  }
+  .if-pulse__tile:nth-child(n + 3) {
+    border-top: 1px solid var(--if-rule-soft);
+  }
+}
+@media (max-width: 560px) {
+  .if-pulse__grid {
+    grid-template-columns: 1fr;
+  }
+  .if-pulse__tile + .if-pulse__tile {
+    border-left: 0;
+    border-top: 1px solid var(--if-rule-soft);
+  }
+  .if-pulse__tile {
+    padding: 16px 18px 14px;
+  }
+  .if-pulse__value {
+    font-size: 22px;
+  }
+}
+
+/* ---- centered call-to-action (Connect your node, before a wallet connects) ---- */
+.if-cta {
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 220px);
+  padding-top: 24px;
+  padding-bottom: 48px;
+}
+.if-cta__box {
+  max-width: 640px;
+  text-align: center;
+  background: var(--if-paper-2);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+  padding: 44px 40px 40px;
+  box-shadow:
+    0 1px #14201b05,
+    0 12px 32px -20px #14201b2e;
+}
+.if-cta__box .if-guide__title {
+  margin: 8px 0 14px;
+}
+.if-cta__box .if-guide__lede {
+  margin: 0 auto;
+}
+.if-cta__actions {
+  justify-content: center;
+  margin-top: 24px;
+}
+@media (max-width: 880px) {
+  .if-cta__box {
+    padding: 28px 22px 26px;
+    border-radius: var(--if-radius);
+  }
+}

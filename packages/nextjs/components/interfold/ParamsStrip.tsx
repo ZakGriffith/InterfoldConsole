@@ -1,12 +1,15 @@
 "use client";
 
 import { Stat } from "./ui";
-import { useConsole } from "~~/hooks/interfold/ConsoleContext";
+import { useRegistryParams } from "~~/hooks/interfold/useRegistryParams";
 import { bpsToPct, fmtDuration, fmtTokens } from "~~/utils/interfold/format";
 
-/** Live registry parameters (owner-settable; never hard-coded). Mirrors the dashboard's `opparams` strip. */
+/**
+ * Live registry parameters (owner-settable; never hard-coded). Mirrors the dashboard's `opparams` strip.
+ * Reads the registry directly so it can render on the public landing, outside the console context.
+ */
 export const ParamsStrip = () => {
-  const { params: p } = useConsole();
+  const { data: p } = useRegistryParams();
   return (
     <div className="if-stats">
       <Stat

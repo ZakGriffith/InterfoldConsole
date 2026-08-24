@@ -6,13 +6,12 @@ import { isAddress } from "viem";
 import { useEnsAddress, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
-import { DEFAULT_BOND_OWNER, LINKS, safeQueue } from "~~/utils/interfold/contracts";
+import { LINKS, safeQueue } from "~~/utils/interfold/contracts";
 import { fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 
 const SOURCE_LABEL = {
   connected: "Connected wallet",
   "operator-of-connected": "Bond owner of the connected hot wallet",
-  default: "Default Safe",
   override: "Viewing as",
 } as const;
 
@@ -57,9 +56,7 @@ export const BondOwnerCard = () => {
                 {ownerEns}
               </span>
             )}
-            <Badge kind={ownerSource === "override" ? "muted" : ownerSource === "default" ? "muted" : "working"}>
-              {SOURCE_LABEL[ownerSource]}
-            </Badge>
+            <Badge kind={ownerSource === "override" ? "muted" : "working"}>{SOURCE_LABEL[ownerSource]}</Badge>
             {connected && sameAddr(connected, owner) && (
               <Badge kind={isSafe ? "open" : "muted"}>
                 {connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "Safe via WalletConnect" : "EOA"}
@@ -161,11 +158,6 @@ export const BondOwnerCard = () => {
             {connected && isAddress(connected) && !sameAddr(connected, owner) && (
               <button type="button" className="if-chip" onClick={() => setOwnerOverride(connected)}>
                 Use connected {connected.slice(0, 6)}…
-              </button>
-            )}
-            {!sameAddr(owner, DEFAULT_BOND_OWNER) && (
-              <button type="button" className="if-chip" onClick={() => setOwnerOverride(DEFAULT_BOND_OWNER)}>
-                Default Safe {DEFAULT_BOND_OWNER.slice(0, 6)}…
               </button>
             )}
           </div>

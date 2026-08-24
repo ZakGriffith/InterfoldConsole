@@ -1,4 +1,3 @@
-import { type Address, getAddress } from "viem";
 import externalContracts from "~~/contracts/externalContracts";
 
 /**
@@ -12,11 +11,6 @@ export const SUSDS = externalContracts[CHAIN_ID].sUSDS;
 export const TICKET_TOKEN = externalContracts[CHAIN_ID].InterfoldTicketToken;
 
 export const REGISTRY_DEPLOYED_ON_BLOCK = BigInt(REGISTRY.deployedOnBlock);
-
-/** Default bond owner shown before a wallet connects (buidlguidl.eth Safe unless overridden). */
-export const DEFAULT_BOND_OWNER: Address = getAddress(
-  process.env.NEXT_PUBLIC_SAFE_ADDRESS || "0x97843608a00e2bbc75ab0C1911387E002565DEDE",
-);
 
 export const LINKS = {
   explorer: "https://etherscan.io",

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ConnectCta } from "./ConnectGate";
+import { NetworkPulse } from "./NetworkPulse";
 import { OperatorWizard } from "./OperatorWizard";
 import { ParamsStrip } from "./ParamsStrip";
 import { AddressLink, Badge, CopyButton, Empty, Field, Loader, Note } from "./ui";
@@ -97,6 +99,7 @@ const Inner = () => {
           </p>
         </header>
 
+        <NetworkPulse />
         {paramsLoading && !params ? (
           <Loader label="Loading bonding parameters" sub={REGISTRY.address} />
         ) : (
@@ -212,7 +215,7 @@ const Inner = () => {
               />
             </div>
             <p className="if-card__body if-card__body--muted">
-              Remembered in this browser only. The node also appears in the Fleet view for everyone else once its
+              Remembered in this browser only. The node also appears under My Nodes for every signer once its
               authorization is on-chain.
             </p>
           </section>
@@ -246,7 +249,7 @@ const Inner = () => {
 };
 
 export const MyNode = () => (
-  <ConsoleProvider>
+  <ConsoleProvider gate={<ConnectCta />}>
     <Inner />
   </ConsoleProvider>
 );

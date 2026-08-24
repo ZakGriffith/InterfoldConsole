@@ -81,8 +81,8 @@ Everything below was verified against verified Solidity source and live mainnet 
    `safeWallet`), daisyUI and heroicons ship with the template.
 6. `.env.local`: `NEXT_PUBLIC_ALCHEMY_API_KEY=…` (event history),
    `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=…` (WalletConnect mode), and
-   `NEXT_PUBLIC_SAFE_ADDRESS=0x97843608a00e2bbc75ab0C1911387E002565DEDE` as the default bond owner
-   shown before any wallet connects.
+   There is deliberately **no** default bond owner: the app is public, so nothing about any Safe renders until a
+   wallet connects (the connected Safe is the owner; a hot wallet is asked which Safe it authorizes).
 
 ## Page architecture (`/operators`)
 

@@ -298,11 +298,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
                 <>
                   <AddressLink address={owner} />{" "}
                   <span className="if-dl__muted">
-                    {ownerSource === "default"
-                      ? "default Safe"
-                      : ownerSource === "operator-of-connected"
-                        ? "owner of the connected hot wallet"
-                        : ownerSource}
+                    {ownerSource === "operator-of-connected" ? "owner of the connected hot wallet" : ownerSource}
                   </span>
                 </>,
               ],
