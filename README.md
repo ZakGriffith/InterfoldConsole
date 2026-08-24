@@ -1,3 +1,16 @@
+# Interfold Operator Console
+
+A Scaffold-ETH 2 app that replicates the operator page of [dashboard.theinterfold.com](https://dashboard.theinterfold.com/#operator) for a bond owner that is a **Gnosis Safe** (the official UI cannot connect a Safe or WalletConnect). It bonds 32k FOLD, registers, buys sUSDS tickets, monitors and exits Interfold ciphernodes, for many nodes at once.
+
+- **Run it:** `yarn install && yarn start` → http://localhost:3000 (mainnet only; no local chain needed).
+- **As a Safe App:** app.safe.global → Apps → *My custom apps* → *Add custom Safe App* → `http://localhost:3000` (or the deployed URL). The `safe` connector auto-connects. WalletConnect from Safe{Wallet} works too.
+- **Keys:** copy `packages/nextjs/.env.example` to `.env.local`. `NEXT_PUBLIC_ALCHEMY_API_KEY` makes operator discovery (`BondOwnerSet` event scan) reliable; `NEXT_PUBLIC_SAFE_ADDRESS` is the bond owner shown before a wallet connects.
+- **Where things live:** page `packages/nextjs/app/page.tsx` → `components/interfold/*` (wizard, fleet table, exit panel), `hooks/interfold/*` (reads + the Safe-aware write hook), `utils/interfold/*`, contracts in `contracts/externalContracts.ts`, theme in `styles/interfold.css`.
+- **Every write is simulated first** with `from = bond owner` (an `eth_call`, no signature) and the exact calldata can be copied for the Safe Transaction Builder / abi.ninja. Safe writes resolve to a *safeTxHash* and are never awaited; the UI advances from polled reads.
+- Background and contract facts: `.claude/skills/interfold-operator-ui/`.
+
+---
+
 # 🏗 Scaffold-ETH 2
 
 <h4 align="center">

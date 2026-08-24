@@ -46,7 +46,7 @@ export const wagmiConnectors = () => {
     ],
 
     {
-      appName: "scaffold-eth-2",
+      appName: "Interfold Operator Console",
       projectId: scaffoldConfig.walletConnectProjectId,
     },
   );
