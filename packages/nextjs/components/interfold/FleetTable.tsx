@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { AddressLink, Badge, type BadgeKind, Empty, Field, Note } from "./ui";
+import { AddressLink, Badge, type BadgeKind, Empty, Note } from "./ui";
 import { type Address, parseEther } from "viem";
-import { useEnsAddress } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type OperatorSource } from "~~/hooks/interfold/useOperatorList";
-import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
+import { fmtEth, fmtTokens, sameAddr } from "~~/utils/interfold/format";
 
 const LOW_ETH = parseEther("0.01");
 
@@ -24,7 +22,7 @@ export const statusPill = (
   if (s.exitInProgress) return { label: "Exit in progress", kind: "bad" };
   if (!sameAddr(s.bondOwner, owner))
     return s.bondOwner === "0x0000000000000000000000000000000000000000"
-      ? { label: "Needs bond owner", kind: "warn" }
+      ? { label: "Waiting for node: set-bond-owner", kind: "warn" }
       : { label: "Not bond-owned by this wallet", kind: "warn" };
   if (required !== undefined && s.bond < required)
     return { label: s.bond > 0n ? "Needs full bond" : "Needs bond", kind: "working" };
@@ -35,16 +33,20 @@ export const statusPill = (
   return { label: "Registered · inactive", kind: "open" };
 };
 
+/** True when the row still needs something from the bond owner or the node operator. */
+export const needsAttention = (pill: StatusPill) => pill.kind !== "published";
+
 type Props = {
   operators: Address[];
   sources: Record<string, OperatorSource[]>;
+  labels: Record<string, string>;
   statuses: Record<string, OperatorStatus>;
   selected?: Address;
   onSelect: (a: Address) => void;
-  addManual: (a: Address) => void;
   removeManual: (a: Address) => void;
   isDiscovering: boolean;
   logsFailed: boolean;
+  lastScan: number;
   refetch: () => void;
 };
 
@@ -52,48 +54,47 @@ type Props = {
 export const FleetTable = ({
   operators,
   sources,
+  labels,
   statuses,
   selected,
   onSelect,
-  addManual,
   removeManual,
   isDiscovering,
   logsFailed,
+  lastScan,
   refetch,
 }: Props) => {
   const { owner, params: p } = useConsole();
-  const [input, setInput] = useState("");
-  const ensName = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
-  const { data: ensAddr, isLoading: ensLoading } = useEnsAddress({
-    name: safeNormalize(ensName),
-    chainId: 1,
-    query: { enabled: !!ensName },
-  });
-  const resolved = toChecksum(input.trim()) ?? (ensAddr ? toChecksum(ensAddr) : null);
-  const invalid = input.trim() !== "" && !resolved && !ensLoading;
-
-  const add = () => {
-    if (!resolved) return;
-    addManual(resolved);
-    onSelect(resolved);
-    setInput("");
-  };
+  const attention = operators.filter(op =>
+    needsAttention(statusPill(statuses[op.toLowerCase()], owner, p?.requiredCiphernodeBond, p?.minTicketBalance)),
+  ).length;
 
   return (
     <section className="if-guide" style={{ gap: 16 }}>
       <header className="if-card__head" style={{ marginBottom: 0 }}>
         <div>
           <div className="if-eyebrow">Operator positions</div>
-          <h2 className="if-section-title">Ciphernodes owned by this wallet</h2>
+          <h2 className="if-section-title">Ciphernodes bonded by this wallet</h2>
         </div>
         <div className="if-actions">
+          <span className="if-stat__sub">
+            {operators.length > 0 && (
+              <>
+                {operators.length} node{operators.length === 1 ? "" : "s"} · {attention} need
+                {attention === 1 ? "s" : ""} attention ·{" "}
+              </>
+            )}
+            {lastScan ? `last scan ${new Date(lastScan).toLocaleTimeString()}` : "not scanned yet"}
+          </span>
           <button
             type="button"
-            className="if-btn if-btn--ghost if-btn--sm"
+            className="if-btn if-btn--primary if-btn--sm"
             onClick={() => refetch()}
             disabled={isDiscovering}
+            title="Re-reads BondOwnerSet events and the Safe transaction history for nodes that named this wallet as bond owner. Also runs automatically every 2 minutes."
           >
-            {isDiscovering ? <span className="if-spinner" /> : null} Rescan
+            {isDiscovering ? <span className="if-spinner" /> : null}
+            {isDiscovering ? "Scanning…" : "Scan for new nodes"}
           </button>
         </div>
       </header>
@@ -102,14 +103,14 @@ export const FleetTable = ({
         <Empty>
           {isDiscovering
             ? "Scanning BondOwnerSet events and Safe history for operators…"
-            : "No operators found for this bond owner yet. Add the node's operator key below to start the guide."}
+            : "No operators found for this bond owner yet. Use “Onboard a new ciphernode” above to add one."}
         </Empty>
       ) : (
         <div className="if-table-wrap">
           <table className="if-table">
             <thead>
               <tr>
-                <th>Operator key</th>
+                <th>Node</th>
                 <th>Status</th>
                 <th className="if-num">Bond (FOLD)</th>
                 <th>Registered</th>
@@ -122,14 +123,18 @@ export const FleetTable = ({
             </thead>
             <tbody>
               {operators.map(op => {
-                const s = statuses[op.toLowerCase()];
+                const k = op.toLowerCase();
+                const s = statuses[k];
                 const pill = statusPill(s, owner, p?.requiredCiphernodeBond, p?.minTicketBalance);
-                const src = sources[op.toLowerCase()] ?? [];
+                const src = sources[k] ?? [];
                 const lowEth = s ? s.ethBalance < LOW_ETH : false;
                 return (
                   <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
                     <td>
-                      <AddressLink address={op} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        {labels[k] && <span style={{ fontWeight: 540 }}>{labels[k]}</span>}
+                        <AddressLink address={op} />
+                      </div>
                     </td>
                     <td>
                       <Badge kind={pill.kind}>{pill.label}</Badge>
@@ -183,8 +188,8 @@ export const FleetTable = ({
           </table>
           <div className="if-table__foot">
             <span>
-              {operators.length} operator{operators.length === 1 ? "" : "s"} · discovered from BondOwnerSet events,
-              executed Safe transactions, and manual entries (stored in this browser).
+              Discovered from BondOwnerSet events and executed Safe transactions; manual entries and labels are stored
+              in this browser. A node you added by hand shows “Waiting for node” until its operator runs set-bond-owner.
             </span>
           </div>
         </div>
@@ -196,24 +201,6 @@ export const FleetTable = ({
           <code>NEXT_PUBLIC_ALCHEMY_API_KEY</code> in <code>.env.local</code> for full discovery.
         </Note>
       )}
-
-      <div className="if-fields">
-        <Field
-          label="Add an operator key (the ciphernode address, or ENS)"
-          value={input}
-          onChange={setInput}
-          placeholder="0x…"
-          invalid={invalid}
-          hint={
-            invalid ? "Not a valid address or ENS name." : "The address your ciphernode signs with. Never the Safe."
-          }
-          suffix={
-            <button type="button" className="if-btn if-btn--sm if-btn--primary" disabled={!resolved} onClick={add}>
-              Add operator
-            </button>
-          }
-        />
-      </div>
     </section>
   );
 };

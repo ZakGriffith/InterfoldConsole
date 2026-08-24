@@ -21,8 +21,17 @@ import {
   parseWholeInput,
   sameAddr,
 } from "~~/utils/interfold/format";
+import { operatorInstructions } from "~~/utils/interfold/instructions";
 
-type Props = { operator: Address; status?: OperatorStatus; statusLoading: boolean };
+type Props = {
+  operator: Address;
+  status?: OperatorStatus;
+  statusLoading: boolean;
+  label?: string;
+  onLabel?: (label: string) => void;
+  /** "fleet": you manage nodes other people run. "self": you are the signer *and* the node operator. */
+  mode?: "fleet" | "self";
+};
 
 const MODE_LABEL = {
   "safe-app": "Safe App",
@@ -35,7 +44,7 @@ const MODE_LABEL = {
  * View C: the five-step guide from dashboard.theinterfold.com, re-targeted at a bond owner that is a Safe.
  * Every step's state is computed from polled reads on each render; nothing is stored locally.
  */
-export const OperatorWizard = ({ operator, status: s, statusLoading }: Props) => {
+export const OperatorWizard = ({ operator, status: s, statusLoading, label = "", onLabel, mode = "fleet" }: Props) => {
   const {
     owner,
     ownerSource,
@@ -157,6 +166,9 @@ export const OperatorWizard = ({ operator, status: s, statusLoading }: Props) =>
   const pill = statusPill(s, owner, p?.requiredCiphernodeBond, p?.minTicketBalance);
   const lowEth = !!s && s.ethBalance < parseEther("0.01");
   const cli = `interfold ciphernode set-bond-owner --owner ${owner}`;
+  const instructions = operatorInstructions(owner, p);
+  const [labelDraft, setLabelDraft] = useState(label);
+  useEffect(() => setLabelDraft(label), [label, operator]);
 
   return (
     <div className="if-guide">
@@ -165,13 +177,38 @@ export const OperatorWizard = ({ operator, status: s, statusLoading }: Props) =>
         <header className="if-card__head">
           <div>
             <div className="if-eyebrow">Operator position</div>
+            {label && (
+              <h3 className="if-card__title" style={{ marginBottom: 6 }}>
+                {label}
+              </h3>
+            )}
             <div className="if-actions">
               <AddressLink address={operator} full />
               {statusLoading && <span className="if-spinner" />}
             </div>
           </div>
-          <Badge kind={pill.kind}>{pill.label}</Badge>
+          <div className="if-actions" style={{ alignItems: "flex-start" }}>
+            <Badge kind={pill.kind}>{pill.label}</Badge>
+          </div>
         </header>
+        {onLabel && (
+          <div className="if-fields" style={{ marginBottom: 18 }}>
+            <Field
+              label="Label (who runs this node; stored in this browser)"
+              value={labelDraft}
+              onChange={setLabelDraft}
+              placeholder="e.g. Alice — hetzner-1"
+              mono={false}
+              suffix={
+                labelDraft !== label ? (
+                  <button type="button" className="if-btn if-btn--sm if-btn--ghost" onClick={() => onLabel(labelDraft)}>
+                    Save
+                  </button>
+                ) : null
+              }
+            />
+          </div>
+        )}
         <Dl
           items={[
             [
@@ -312,17 +349,34 @@ export const OperatorWizard = ({ operator, status: s, statusLoading }: Props) =>
           />
           {s && s.bondOwner === zeroAddress && (
             <>
-              <Note>
-                On the node, run <code>{cli}</code> <CopyButton text={cli} label="Copy command" /> — or sign{" "}
-                <code>setBondOwner</code> here from the operator&apos;s hot wallet.
-              </Note>
+              {mode === "self" ? (
+                <Note kind="warn">
+                  On your node, run <code>{cli}</code> <CopyButton text={cli} label="Copy command" /> — it is sent by
+                  your operator key and needs a little ETH for gas. Or connect the node&apos;s hot wallet here and sign{" "}
+                  <code>setBondOwner</code> directly. This step advances by itself once the transaction lands; nothing
+                  can be bonded before it.
+                </Note>
+              ) : (
+                <>
+                  <Note kind="warn">
+                    Waiting for the node operator. They must run <code>{cli}</code>{" "}
+                    <CopyButton text={cli} label="Copy command" /> on their node (it is sent by their operator key and
+                    needs a little ETH for gas). This step advances by itself once that transaction lands — nothing can
+                    be bonded before it. <CopyButton text={instructions} label="Copy full instructions for them" />
+                  </Note>
+                  <Note>
+                    If <em>you</em> run this node, connect its hot wallet here instead and sign{" "}
+                    <code>setBondOwner</code> directly.
+                  </Note>
+                </>
+              )}
               {isOperatorConnected ? (
                 <ActionButtons label="Authorize bond owner" params={setBondOwner} requires="connected" />
               ) : (
                 <>
-                  <Note kind="warn">
-                    Connect the operator wallet ({operator.slice(0, 6)}…{operator.slice(-4)}) to sign this step here,
-                    then switch back to the bond owner for the rest.
+                  <Note>
+                    To sign it here: connect the operator wallet ({operator.slice(0, 6)}…{operator.slice(-4)}) with
+                    MetaMask/WalletConnect, then reconnect as the Safe for the remaining steps.
                   </Note>
                   <ActionButtons
                     label="Authorize bond owner"

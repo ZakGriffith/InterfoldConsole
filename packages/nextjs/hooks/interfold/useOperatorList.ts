@@ -30,6 +30,24 @@ const writeManual = (owner: Address, list: Address[]) => {
   }
 };
 
+/** Human labels ("Alice's node") keyed by lower-cased operator, per bond owner. */
+const labelsKey = (owner: Address) => `interfold.labels.${owner.toLowerCase()}`;
+const readLabels = (owner: Address): Record<string, string> => {
+  try {
+    const raw = localStorage.getItem(labelsKey(owner));
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+};
+const writeLabels = (owner: Address, labels: Record<string, string>) => {
+  try {
+    localStorage.setItem(labelsKey(owner), JSON.stringify(labels));
+  } catch {
+    /* in-memory only */
+  }
+};
+
 /**
  * Operators owned by `owner`, merged and de-duplicated from three sources:
  *  1. BondOwnerSet(operator, bondOwner = owner) logs since the registry was deployed. One wide
@@ -41,10 +59,27 @@ const writeManual = (owner: Address, list: Address[]) => {
 export const useOperatorList = (owner: Address | undefined) => {
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
   const [manual, setManual] = useState<Address[]>([]);
+  const [labels, setLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setManual(owner ? readManual(owner) : []);
+    setLabels(owner ? readLabels(owner) : {});
   }, [owner]);
+
+  const setLabel = useCallback(
+    (a: Address, label: string) => {
+      if (!owner) return;
+      setLabels(prev => {
+        const next = { ...prev };
+        const k = a.toLowerCase();
+        if (label.trim()) next[k] = label.trim();
+        else delete next[k];
+        writeLabels(owner, next);
+        return next;
+      });
+    },
+    [owner],
+  );
 
   const discovery = useQuery({
     queryKey: ["interfold", "operators", owner],
@@ -134,10 +169,15 @@ export const useOperatorList = (owner: Address | undefined) => {
   return {
     operators,
     sources,
+    labels,
+    setLabel,
     addManual,
     removeManual,
-    isDiscovering: discovery.isLoading,
+    isDiscovering: discovery.isLoading || discovery.isFetching,
     logsFailed: discovery.data?.logsFailed ?? false,
+    /** Unix ms of the last successful scan (0 until the first one completes). */
+    lastScan: discovery.dataUpdatedAt,
+    discoveredCount: (discovery.data?.events.length ?? 0) + (discovery.data?.safe.length ?? 0),
     refetch: discovery.refetch,
   };
 };

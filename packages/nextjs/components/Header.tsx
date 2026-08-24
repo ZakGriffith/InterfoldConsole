@@ -8,7 +8,8 @@ import { LINKS } from "~~/utils/interfold/contracts";
 type HeaderMenuLink = { label: string; href: string; external?: boolean };
 
 export const menuLinks: HeaderMenuLink[] = [
-  { label: "Run a ciphernode", href: "/" },
+  { label: "Fleet", href: "/" },
+  { label: "Connect your node", href: "/my-node" },
   { label: "Debug contracts", href: "/debug" },
   { label: "Docs", href: LINKS.docs, external: true },
 ];

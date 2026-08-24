@@ -92,7 +92,7 @@ export const BondOwnerCard = () => {
         />
         <Stat label="Bonded" value={fmtTokens(f?.totalBonded)} sub="FOLD across all operators" />
         <Stat
-          label="Nodes you can still bond"
+          label="Nodes you can bond"
           value={nodesCapacity === undefined ? "—" : nodesCapacity.toString()}
           sub="locked FOLD counts"
         />
@@ -103,7 +103,7 @@ export const BondOwnerCard = () => {
           title={f ? `${f.susdsBalance.toString()} wei` : undefined}
         />
         <Stat
-          label="Tickets you can still buy"
+          label="Tickets you can buy"
           value={ticketsCapacity === undefined ? "—" : ticketsCapacity.toString()}
           sub={p ? `${fmtTokens(p.ticketPrice, "sUSDS")} each` : undefined}
         />
