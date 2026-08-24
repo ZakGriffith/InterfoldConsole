@@ -1,5 +1,5 @@
 {
-  "name": "Interfold Operator Console",
-  "description": "Bond, register, ticket, monitor and exit Interfold ciphernodes from a Safe",
+  "name": "Ciphernode Console",
+  "description": "Bond, register, ticket, monitor and exit Interfold ciphernodes from a Safe (BuidlGuidl)",
   "iconPath": "logo.svg"
 }

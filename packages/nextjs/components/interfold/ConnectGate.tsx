@@ -17,7 +17,7 @@ export const ConnectGate = () => {
     <main className="if-main">
       <div className="if-guide">
         <header className="if-guide__head">
-          <div className="if-eyebrow">Interfold operator console</div>
+          <div className="if-eyebrow">Ciphernode Console</div>
           <h1 className="if-guide__title">Connect a wallet to see its ciphernodes.</h1>
           <p className="if-guide__lede">
             This console lets a bond owner — typically a Gnosis Safe — bond FOLD, register, buy sUSDS tickets, monitor

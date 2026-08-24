@@ -1,9 +1,10 @@
 "use client";
 
-import { type ReactNode, createContext, useContext, useMemo, useState } from "react";
+import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { type Address, zeroAddress } from "viem";
 import { useReadContract } from "wagmi";
 import { ConnectGate, OwnerPrompt } from "~~/components/interfold/ConnectGate";
+import { Loader } from "~~/components/interfold/ui";
 import { type ConnectionMode, useIsSafeAccount } from "~~/hooks/interfold/useIsSafeAccount";
 import { type OwnerFunds, useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { type RegistryParams, useRegistryParams } from "~~/hooks/interfold/useRegistryParams";
@@ -45,7 +46,31 @@ const Ctx = createContext<ConsoleState | null>(null);
  */
 export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?: ReactNode }) => {
   const acct = useIsSafeAccount();
-  const [override, setOwnerOverride] = useState<Address | undefined>();
+  const [override, setOverrideState] = useState<Address | undefined>();
+
+  // A typed bond owner (hot-wallet flow) survives reloads until set-bond-owner lands on-chain.
+  const overrideKey = acct.address ? `interfold.owner-override.${acct.address.toLowerCase()}` : undefined;
+  useEffect(() => {
+    try {
+      const v = overrideKey ? localStorage.getItem(overrideKey) : null;
+      setOverrideState(v ? (v as Address) : undefined);
+    } catch {
+      setOverrideState(undefined);
+    }
+  }, [overrideKey]);
+  const setOwnerOverride = useCallback(
+    (a: Address | undefined) => {
+      setOverrideState(a);
+      try {
+        if (!overrideKey) return;
+        if (a) localStorage.setItem(overrideKey, a);
+        else localStorage.removeItem(overrideKey);
+      } catch {
+        /* in-memory only */
+      }
+    },
+    [overrideKey],
+  );
 
   const { data: ownerOfConnected } = useReadContract({
     address: REGISTRY.address,
@@ -72,6 +97,13 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
   const funds = useOwnerFunds(resolved?.owner);
 
   if (!acct.address || !acct.isConnected || !resolved) return <>{gate ?? <ConnectGate />}</>;
+  // Plain key with no override yet: wait for its balances before deciding owner vs. hot wallet (no flash).
+  if (acct.mode === "eoa" && resolved.ownerSource === "connected" && funds.data === undefined)
+    return (
+      <main className="if-main">
+        <Loader label="Checking this wallet" sub={acct.address} />
+      </main>
+    );
 
   const { owner, ownerSource } = resolved;
   const canWriteAsOwner = acct.onMainnet && sameAddr(acct.address, owner);

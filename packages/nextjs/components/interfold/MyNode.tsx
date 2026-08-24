@@ -36,8 +36,19 @@ const writeMyNode = (owner: Address, op: Address | undefined) => {
 };
 
 const Inner = () => {
-  const { owner, connected, connMode, isSafe, onMainnet, canWriteAsOwner, operatorMode, params, paramsLoading } =
-    useConsole();
+  const {
+    owner,
+    ownerSource,
+    setOwnerOverride,
+    connected,
+    connMode,
+    isSafe,
+    onMainnet,
+    canWriteAsOwner,
+    operatorMode,
+    params,
+    paramsLoading,
+  } = useConsole();
   const { openConnectModal } = useConnectModal();
   const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
   const list = useOperatorList(owner);
@@ -45,6 +56,16 @@ const Inner = () => {
   const [myNode, setMyNode] = useState<Address>();
   const [input, setInput] = useState("");
   const [label, setLabel] = useState("");
+  const [ownerInput, setOwnerInput] = useState("");
+  const [editingOwner, setEditingOwner] = useState(false);
+  const ownerEnsInput = ownerInput.trim().toLowerCase().endsWith(".eth") ? ownerInput.trim() : undefined;
+  const { data: ownerEnsAddr, isLoading: ownerEnsLoading } = useEnsAddress({
+    name: safeNormalize(ownerEnsInput),
+    chainId: 1,
+    query: { enabled: !!ownerEnsInput },
+  });
+  const ownerResolved = toChecksum(ownerInput.trim()) ?? (ownerEnsAddr ? toChecksum(ownerEnsAddr) : null);
+  const ownerInvalid = ownerInput.trim() !== "" && !ownerResolved && !ownerEnsLoading;
 
   useEffect(() => {
     setMyNode(readMyNode(owner));
@@ -155,6 +176,58 @@ const Inner = () => {
               This is a node&apos;s hot wallet, so only <code>setBondOwner</code> can be signed from here. For the
               bonding steps, reconnect as the Safe (Safe App or WalletConnect).
             </Note>
+          )}
+          {connMode === "eoa" && (
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="if-actions">
+                <span className="if-stat__sub">
+                  Bond owner for this guide: <AddressLink address={owner} />{" "}
+                  {ownerSource === "operator-of-connected"
+                    ? "(set on-chain by this node)"
+                    : ownerSource === "override"
+                      ? "(entered here)"
+                      : "(this wallet)"}
+                </span>
+                {ownerSource !== "operator-of-connected" && (
+                  <button
+                    type="button"
+                    className="if-btn if-btn--ghost if-btn--xs"
+                    onClick={() => setEditingOwner(e => !e)}
+                  >
+                    {editingOwner ? "Cancel" : "Change"}
+                  </button>
+                )}
+              </div>
+              {editingOwner && (
+                <div className="if-fields">
+                  <Field
+                    label="Bond owner (the Safe that funds this node)"
+                    value={ownerInput}
+                    onChange={setOwnerInput}
+                    placeholder="0x… or name.eth"
+                    invalid={ownerInvalid}
+                    hint={
+                      ownerInvalid ? "Not a valid address or ENS name." : "Remembered in this browser for this wallet."
+                    }
+                    suffix={
+                      <button
+                        type="button"
+                        className="if-btn if-btn--sm if-btn--primary"
+                        disabled={!ownerResolved}
+                        onClick={() => {
+                          if (!ownerResolved) return;
+                          setOwnerOverride(sameAddr(ownerResolved, connected) ? undefined : ownerResolved);
+                          setOwnerInput("");
+                          setEditingOwner(false);
+                        }}
+                      >
+                        Use
+                      </button>
+                    }
+                  />
+                </div>
+              )}
+            </div>
           )}
           {connected && !isSafe && !operatorMode && (
             <Note kind="warn">

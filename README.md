@@ -1,11 +1,11 @@
-# Interfold Operator Console
+# Ciphernode Console (BuidlGuidl)
 
-A Scaffold-ETH 2 app that replicates the operator page of [dashboard.theinterfold.com](https://dashboard.theinterfold.com/#operator) for a bond owner that is a **Gnosis Safe** (the official UI cannot connect a Safe or WalletConnect). It bonds 32k FOLD, registers, buys sUSDS tickets, monitors and exits Interfold ciphernodes, for many nodes at once.
+An independent Scaffold-ETH 2 app (not affiliated with Interfold) that gives a bond owner that is a **Gnosis Safe** the full operator flow of [dashboard.theinterfold.com](https://dashboard.theinterfold.com/#operator), which cannot connect a Safe or WalletConnect. It bonds 32k FOLD, registers, buys sUSDS tickets, monitors and exits Interfold ciphernodes, for many nodes at once.
 
 - **Run it:** `yarn install && yarn start` → http://localhost:3000 (mainnet only; no local chain needed).
 - **As a Safe App:** app.safe.global → Apps → *My custom apps* → *Add custom Safe App* → `http://localhost:3000` (or the deployed URL). The `safe` connector auto-connects. WalletConnect from Safe{Wallet} works too.
 - **Keys:** copy `packages/nextjs/.env.example` to `.env.local`. `NEXT_PUBLIC_ALCHEMY_API_KEY` makes operator discovery (`BondOwnerSet` event scan) reliable. Nothing is shown until a wallet connects; the bond owner is always the connected Safe (or, for a node's hot wallet, the Safe it names).
-- **Where things live:** page `packages/nextjs/app/page.tsx` → `components/interfold/*` (wizard, fleet table, exit panel), `hooks/interfold/*` (reads + the Safe-aware write hook), `utils/interfold/*`, contracts in `contracts/externalContracts.ts`, theme in `styles/interfold.css`.
+- **Where things live:** page `packages/nextjs/app/page.tsx` → `components/interfold/*` (wizard, fleet table, exit panel), `hooks/interfold/*` (reads + the Safe-aware write hook), `utils/interfold/*`, contracts in `contracts/externalContracts.ts`, theme (its own dark look, not Interfold's) in `styles/interfold.css`.
 - **Batching:** any node whose operator has run `set-bond-owner` can have approve → bond → register → approve → tickets proposed as **one** Safe transaction (per node in its guide, or several nodes at once via the fleet table checkboxes). The whole batch is pre-flighted with `eth_simulateV1` as the Safe; delivery is EIP-5792 `wallet_sendCalls` (one MultiSend proposal inside the Safe App / Safe{Wallet}), with a Transaction Builder JSON export as the fallback. `setBondOwner` itself is sent by each node key and never needs Safe signatures.
 - **Every write is simulated first** with `from = bond owner` (an `eth_call`, no signature) and the exact calldata can be copied for the Safe Transaction Builder / abi.ninja. Safe writes resolve to a *safeTxHash* and are never awaited; the UI advances from polled reads.
 - Background and contract facts: `.claude/skills/interfold-operator-ui/`.

@@ -18,8 +18,8 @@ export const menuLinks: HeaderMenuLink[] = [
 
 export const Wordmark = () => (
   <span className="if-wordmark">
-    <span className="if-wordmark__name">Interfold</span>
-    <span className="if-wordmark__sub">Operator console</span>
+    <span className="if-wordmark__name">Ciphernode Console</span>
+    <span className="if-wordmark__sub">by BuidlGuidl</span>
   </span>
 );
 
@@ -30,7 +30,7 @@ export const Header = () => {
   return (
     <header className="if-head">
       <div className="if-head__inner">
-        <Link href="/" aria-label="Interfold operator console home">
+        <Link href="/" aria-label="Ciphernode Console home">
           <Wordmark />
         </Link>
         <nav className="if-nav" aria-label="Primary">

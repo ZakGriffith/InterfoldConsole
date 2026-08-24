@@ -10,8 +10,8 @@ export const Footer = () => (
       <div>
         <Wordmark />
         <p className="if-foot__tag">
-          Bond-owner console for Interfold ciphernodes: bond, register, buy tickets, monitor and exit from a Gnosis
-          Safe. Built by BuidlGuidl on Scaffold-ETH 2; not affiliated with the Interfold team.
+          An independent BuidlGuidl tool for running Interfold ciphernodes funded from a Gnosis Safe: bond, register,
+          buy tickets, monitor and exit. Built on Scaffold-ETH 2. Not affiliated with or endorsed by the Interfold team.
         </p>
       </div>
       <div className="if-foot__cols">

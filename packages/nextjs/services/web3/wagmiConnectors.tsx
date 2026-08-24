@@ -46,7 +46,7 @@ export const wagmiConnectors = () => {
     ],
 
     {
-      appName: "Interfold Operator Console",
+      appName: "Ciphernode Console",
       projectId: scaffoldConfig.walletConnectProjectId,
     },
   );

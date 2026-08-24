@@ -16,27 +16,27 @@
 @plugin "daisyui/theme" {
   name: "light";
 
-  /* Interfold paper / ink palette so /debug matches the console. */
-  --color-primary: #14201b;
-  --color-primary-content: #ffffff;
-  --color-secondary: #e8faf0;
-  --color-secondary-content: #163d2c;
-  --color-accent: #1f6b4a;
-  --color-accent-content: #ffffff;
-  --color-neutral: #2c3833;
-  --color-neutral-content: #f7f5ee;
-  --color-base-100: #ffffff;
-  --color-base-200: #f7f5ee;
-  --color-base-300: #e3e7e2;
-  --color-base-content: #14201b;
-  --color-info: #cdeede;
-  --color-success: #1f7a45;
-  --color-warning: #c07a44;
-  --color-error: #b23a36;
+  /* Ciphernode Console dark palette (the app is forced to this theme). */
+  --color-primary: #4f8cff;
+  --color-primary-content: #06101f;
+  --color-secondary: #142748;
+  --color-secondary-content: #cfe0ff;
+  --color-accent: #4fe0a3;
+  --color-accent-content: #06101f;
+  --color-neutral: #18233a;
+  --color-neutral-content: #e8edf7;
+  --color-base-100: #111a2c;
+  --color-base-200: #0a0f1c;
+  --color-base-300: #263453;
+  --color-base-content: #e8edf7;
+  --color-info: #23407a;
+  --color-success: #4fe0a3;
+  --color-warning: #f5c453;
+  --color-error: #ff7b7b;
 
-  --radius-field: 0.625rem;
-  --radius-box: 0.875rem;
-  --radius-selector: 999rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --radius-selector: 0.375rem;
 
   --tt-tailw: 6px;
 }
@@ -120,36 +120,35 @@
   opacity: 80%;
 }
 
-/* ---- /debug (Contracts tab): re-skin @scaffold-ui/debug-contracts to the Interfold look ---- */
+/* ---- /debug (Contracts tab): re-skin @scaffold-ui/debug-contracts to the console look ---- */
 .if-page {
-  /* "primary" is a light surface in this widget (SE-2 pale blue) with dark text on it: keep it light. */
-  --color-sui-primary: #cdeede;
-  --color-sui-primary-content: #163d2c;
-  --color-sui-primary-subtle: #e8faf0;
-  --color-sui-primary-neutral: #f7f5ee;
-  --color-sui-accent: #1f6b4a;
-  --color-sui-base-100: #ffffff;
-  --color-sui-base-content: #14201b;
-  --color-sui-neutral: #f7f5ee;
-  --color-sui-neutral-content: #14201b;
-  --color-sui-input-border: #e3e7e2;
-  --color-sui-input-text: #14201b;
-  --color-sui-skeleton-base: #eef1ec;
-  --color-sui-skeleton-highlight: #f7f5ee;
+  --color-sui-primary: #23407a;
+  --color-sui-primary-content: #e8edf7;
+  --color-sui-primary-subtle: #142748;
+  --color-sui-primary-neutral: #18233a;
+  --color-sui-accent: #4f8cff;
+  --color-sui-base-100: #111a2c;
+  --color-sui-base-content: #e8edf7;
+  --color-sui-neutral: #18233a;
+  --color-sui-neutral-content: #e8edf7;
+  --color-sui-input-border: #263453;
+  --color-sui-input-text: #e8edf7;
+  --color-sui-skeleton-base: #18233a;
+  --color-sui-skeleton-highlight: #263453;
 }
 .if-page .border-sui-primary-subtle {
-  border-radius: 14px;
+  border-radius: 12px;
 }
 .if-page .bg-sui-primary-neutral {
-  border-radius: 10px;
+  border-radius: 8px;
 }
 .if-page .bg-sui-primary-subtle.absolute {
-  border-radius: 12px 12px 0 0;
+  border-radius: 8px 8px 0 0;
   box-shadow: none;
 }
 .if-page .btn-dc,
 .if-page .btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 .if-page .rounded,
 .if-page input:not([type="checkbox"]):not([type="radio"]),
@@ -158,16 +157,14 @@
 .if-page .input,
 .if-page .textarea,
 .if-page .select {
-  border-radius: 10px;
+  border-radius: 8px;
 }
 .if-page .sui-skeleton,
 .if-page .tooltip:before,
 .if-page .badge {
-  border-radius: 999px;
+  border-radius: 6px;
 }
 .if-page .shadow-md,
 .if-page .shadow-lg {
-  box-shadow:
-    0 1px #14201b05,
-    0 12px 32px -20px #14201b2e;
+  box-shadow: 0 12px 32px -20px #000000aa;
 }
