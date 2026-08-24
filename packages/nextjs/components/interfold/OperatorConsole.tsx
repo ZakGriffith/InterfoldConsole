@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
-import { FleetTable, needsAttention, statusPill } from "./FleetTable";
+import { FleetTable, batchable, needsAttention, statusPill } from "./FleetTable";
 import { OnboardCard } from "./OnboardCard";
 import { OperatorWizard } from "./OperatorWizard";
 import { ParamsStrip } from "./ParamsStrip";
@@ -11,19 +12,39 @@ import { type Address } from "viem";
 import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useFleetStatus } from "~~/hooks/interfold/useFleetStatus";
 import { useOperatorList } from "~~/hooks/interfold/useOperatorList";
+import { planOnboarding } from "~~/utils/interfold/batch";
 import { REGISTRY, explorerAddress } from "~~/utils/interfold/contracts";
 import { sameAddr } from "~~/utils/interfold/format";
 
 const Inner = () => {
-  const { owner, params, paramsLoading, paramsError, connected, onMainnet } = useConsole();
+  const { owner, params, paramsLoading, paramsError, connected, onMainnet, funds } = useConsole();
   const list = useOperatorList(owner);
   const fleet = useFleetStatus(list.operators);
   const [selected, setSelected] = useState<Address>();
   const wizardRef = useRef<HTMLDivElement>(null);
+  const [batchSel, setBatchSel] = useState<Set<string>>(new Set());
 
-  // Drop the selection when the owner changes or the operator disappears.
+  const pillOf = (op: Address) =>
+    statusPill(fleet.statuses[op.toLowerCase()], owner, params?.requiredCiphernodeBond, params?.minTicketBalance);
+  const toggleBatch = (op: Address) =>
+    setBatchSel(prev => {
+      const next = new Set(prev);
+      const k = op.toLowerCase();
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  const selectAllBatchable = () =>
+    setBatchSel(new Set(list.operators.filter(op => batchable(pillOf(op))).map(op => op.toLowerCase())));
+  const batchNodes = list.operators
+    .filter(op => batchSel.has(op.toLowerCase()))
+    .map(op => ({ operator: op, status: fleet.statuses[op.toLowerCase()], label: list.labels[op.toLowerCase()] }));
+  const fleetPlan = planOnboarding(owner, batchNodes, params, funds);
+
+  // Drop selections when the owner changes or an operator disappears.
   useEffect(() => {
     if (selected && !list.operators.some(o => sameAddr(o, selected))) setSelected(undefined);
+    setBatchSel(prev => new Set([...prev].filter(k => list.operators.some(o => o.toLowerCase() === k))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list.operators, owner]);
 
@@ -90,12 +111,25 @@ const Inner = () => {
         statuses={fleet.statuses}
         selected={selected}
         onSelect={setSelected}
+        batchSelection={batchSel}
+        onToggleBatch={toggleBatch}
+        onSelectAllBatchable={selectAllBatchable}
         removeManual={list.removeManual}
         isDiscovering={list.isDiscovering}
         logsFailed={list.logsFailed}
         lastScan={list.lastScan}
         refetch={() => list.refetch()}
       />
+
+      {batchNodes.length > 0 && (
+        <BatchPanel
+          eyebrow="Batch"
+          title={`One Safe transaction for ${batchNodes.length} node${batchNodes.length === 1 ? "" : "s"}`}
+          lede="Approvals are merged into one FOLD and one sUSDS approval sized for the whole batch; then every node is bonded, registered and ticketed in order. New nodes get the minimum ticket count (use a node's own guide to buy more). One signature round for all of it."
+          plan={fleetPlan}
+          batchName={`interfold-onboard-${batchNodes.length}-nodes`}
+        />
+      )}
 
       <div ref={wizardRef} style={{ scrollMarginTop: 80 }}>
         {selected ? (

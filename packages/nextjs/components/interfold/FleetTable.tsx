@@ -35,6 +35,8 @@ export const statusPill = (
 
 /** True when the row still needs something from the bond owner or the node operator. */
 export const needsAttention = (pill: StatusPill) => pill.kind !== "published";
+/** True when the Safe can act on this node right now (authorized, no exit, something left to do). */
+export const batchable = (pill: StatusPill) => pill.kind === "working";
 
 type Props = {
   operators: Address[];
@@ -43,6 +45,9 @@ type Props = {
   statuses: Record<string, OperatorStatus>;
   selected?: Address;
   onSelect: (a: Address) => void;
+  batchSelection: ReadonlySet<string>;
+  onToggleBatch: (a: Address) => void;
+  onSelectAllBatchable: () => void;
   removeManual: (a: Address) => void;
   isDiscovering: boolean;
   logsFailed: boolean;
@@ -58,6 +63,9 @@ export const FleetTable = ({
   statuses,
   selected,
   onSelect,
+  batchSelection,
+  onToggleBatch,
+  onSelectAllBatchable,
   removeManual,
   isDiscovering,
   logsFailed,
@@ -65,9 +73,14 @@ export const FleetTable = ({
   refetch,
 }: Props) => {
   const { owner, params: p } = useConsole();
-  const attention = operators.filter(op =>
-    needsAttention(statusPill(statuses[op.toLowerCase()], owner, p?.requiredCiphernodeBond, p?.minTicketBalance)),
-  ).length;
+  const pills = Object.fromEntries(
+    operators.map(op => [
+      op.toLowerCase(),
+      statusPill(statuses[op.toLowerCase()], owner, p?.requiredCiphernodeBond, p?.minTicketBalance),
+    ]),
+  );
+  const attention = operators.filter(op => needsAttention(pills[op.toLowerCase()])).length;
+  const batchableCount = operators.filter(op => batchable(pills[op.toLowerCase()])).length;
 
   return (
     <section className="if-guide" style={{ gap: 16 }}>
@@ -86,6 +99,11 @@ export const FleetTable = ({
             )}
             {lastScan ? `last scan ${new Date(lastScan).toLocaleTimeString()}` : "not scanned yet"}
           </span>
+          {batchableCount > 1 && (
+            <button type="button" className="if-btn if-btn--ghost if-btn--sm" onClick={onSelectAllBatchable}>
+              Select all ready ({batchableCount})
+            </button>
+          )}
           <button
             type="button"
             className="if-btn if-btn--primary if-btn--sm"
@@ -110,6 +128,7 @@ export const FleetTable = ({
           <table className="if-table">
             <thead>
               <tr>
+                <th title="Tick nodes to propose their remaining steps as one Safe transaction">Batch</th>
                 <th>Node</th>
                 <th>Status</th>
                 <th className="if-num">Bond (FOLD)</th>
@@ -125,11 +144,22 @@ export const FleetTable = ({
               {operators.map(op => {
                 const k = op.toLowerCase();
                 const s = statuses[k];
-                const pill = statusPill(s, owner, p?.requiredCiphernodeBond, p?.minTicketBalance);
+                const pill = pills[k];
                 const src = sources[k] ?? [];
                 const lowEth = s ? s.ethBalance < LOW_ETH : false;
+                const canBatch = batchable(pill);
                 return (
                   <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
+                    <td onClick={e => e.stopPropagation()} style={{ cursor: "default" }}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Include ${op} in batch`}
+                        checked={batchSelection.has(k)}
+                        disabled={!canBatch}
+                        title={canBatch ? "Include in batch" : "Nothing the Safe can batch for this node right now"}
+                        onChange={() => onToggleBatch(op)}
+                      />
+                    </td>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                         {labels[k] && <span style={{ fontWeight: 540 }}>{labels[k]}</span>}
@@ -190,6 +220,7 @@ export const FleetTable = ({
             <span>
               Discovered from BondOwnerSet events and executed Safe transactions; manual entries and labels are stored
               in this browser. A node you added by hand shows “Waiting for node” until its operator runs set-bond-owner.
+              Tick “Batch” on ready nodes to propose all their remaining steps in one Safe transaction.
             </span>
           </div>
         </div>

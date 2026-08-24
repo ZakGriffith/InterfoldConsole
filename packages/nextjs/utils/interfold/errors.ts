@@ -95,3 +95,20 @@ export const parseContractError = (error: unknown): string => {
   // 3. Wallet / transport errors.
   return getParsedError(error);
 };
+
+/** Decode raw revert bytes (e.g. from eth_simulateV1 results) against every shipped ABI. */
+export const decodeRevertHex = (data: Hex | undefined): string | undefined => {
+  if (!data || data === "0x" || data.length < 10) return undefined;
+  try {
+    const d = decodeErrorResult({ abi: ALL_ERRORS_ABI, data });
+    return `${d.errorName}(${(d.args ?? []).map(a => String(a)).join(", ")})`;
+  } catch {
+    // Error(string) is not in the custom-error ABI list; viem decodes it via the standard selector.
+    try {
+      const d = decodeErrorResult({ abi: [], data });
+      return d.errorName === "Error" ? String(d.args?.[0]) : `${d.errorName}()`;
+    } catch {
+      return `Unknown revert ${data.slice(0, 10)}`;
+    }
+  }
+};

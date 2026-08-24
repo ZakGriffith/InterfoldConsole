@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ActionButtons } from "./ActionButtons";
+import { BatchPanel } from "./BatchPanel";
 import { ExitPanel } from "./ExitPanel";
 import { statusPill } from "./FleetTable";
 import { AddressLink, Badge, CopyButton, Dl, Field, Note, Step, type StepState } from "./ui";
@@ -11,6 +12,7 @@ import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
 import { type WriteParams } from "~~/hooks/interfold/useSafeAwareWrite";
+import { planOnboarding } from "~~/utils/interfold/batch";
 import { FOLD, LINKS, REGISTRY, SUSDS, TICKET_TOKEN } from "~~/utils/interfold/contracts";
 import {
   fmtDuration,
@@ -167,6 +169,13 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
   const lowEth = !!s && s.ethBalance < parseEther("0.01");
   const cli = `interfold ciphernode set-bond-owner --owner ${owner}`;
   const instructions = operatorInstructions(owner, p);
+  const nodePlan = planOnboarding(
+    owner,
+    [{ operator, status: s, label, ticketsWanted: ticketCount ?? undefined }],
+    p,
+    f,
+  );
+  const showBatch = ownerSet && !allDone && nodePlan.calls.length >= 2;
   const [labelDraft, setLabelDraft] = useState(label);
   useEffect(() => setLabelDraft(label), [label, operator]);
 
@@ -246,6 +255,16 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
           ]}
         />
       </section>
+
+      {showBatch && (
+        <BatchPanel
+          eyebrow="Shortcut"
+          title="Or propose every remaining step as one Safe transaction."
+          lede="Approve, bond, register and buy tickets in a single MultiSend proposal: one signature round instead of one per step. The one-off buttons in the steps below still work if you prefer them."
+          plan={nodePlan}
+          batchName={`interfold-onboard-${label ? label.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : operator.slice(0, 10)}`}
+        />
+      )}
 
       <div className="if-steps">
         {/* 1 */}
