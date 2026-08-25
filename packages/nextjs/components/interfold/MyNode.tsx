@@ -5,6 +5,7 @@ import { ConnectCta } from "./ConnectGate";
 import { NetworkPulse } from "./NetworkPulse";
 import { OperatorWizard } from "./OperatorWizard";
 import { ParamsStrip } from "./ParamsStrip";
+import { RequirementsNote } from "./RequirementsNote";
 import { AddressLink, Badge, CommandBlock, Empty, Field, Loader, Note } from "./ui";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address } from "viem";
@@ -256,6 +257,9 @@ const Inner = () => {
               Keep that hot wallet funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it — the
               Safe posts those.
             </p>
+            <div style={{ marginTop: 16 }}>
+              <RequirementsNote compact />
+            </div>
             <div className="if-fields" style={{ marginTop: 18 }}>
               <Field
                 label="Operator key (the ciphernode address)"

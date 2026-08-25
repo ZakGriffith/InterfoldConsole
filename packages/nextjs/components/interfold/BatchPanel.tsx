@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RequirementsNote } from "./RequirementsNote";
 import { CopyButton, Note, TxLink } from "./ui";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useSafeBatch } from "~~/hooks/interfold/useSafeBatch";
@@ -19,10 +20,26 @@ type Props = {
 
 /** Plan table + Simulate batch / Propose as one batch / Transaction Builder export. */
 export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => {
-  const { owner, canWriteAsOwner, isSafe, connected, onMainnet } = useConsole();
+  const { owner, canWriteAsOwner, isSafe, connected, onMainnet, funds, params } = useConsole();
   const b = useSafeBatch();
   const [createdAt] = useState(() => Date.now());
   const [showJson, setShowJson] = useState(false);
+  const [actedWhileShort, setActedWhileShort] = useState<string>();
+
+  // Shortfall check, evaluated live and again at the moment of Download / Copy / Propose.
+  const shortFold = funds && plan.totalFold > funds.foldBalance ? plan.totalFold - funds.foldBalance : 0n;
+  const shortSusds = funds && plan.totalSusds > funds.susdsBalance ? plan.totalSusds - funds.susdsBalance : 0n;
+  const isShort = shortFold > 0n || shortSusds > 0n;
+  const shortText = [
+    shortFold > 0n ? `${fmtTokens(shortFold, "FOLD")} more FOLD` : "",
+    shortSusds > 0n ? `${fmtTokens(shortSusds, "sUSDS")} more sUSDS` : "",
+  ]
+    .filter(Boolean)
+    .join(" and ");
+  const ticketCount = params && params.ticketPrice > 0n ? plan.totalSusds / params.ticketPrice : 0n;
+  const noteShort = (action: string) => {
+    if (isShort) setActedWhileShort(action);
+  };
   const fileName = `${batchName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
   const key = plan.calls.map(c => c.data).join("|");
 
@@ -48,6 +65,7 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
     a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
+    noteShort("Downloaded");
   };
 
   const canPropose = canWriteAsOwner && onMainnet;
@@ -127,6 +145,12 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
         </div>
       )}
 
+      {plan.calls.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <RequirementsNote foldNeeded={plan.totalFold} susdsNeeded={plan.totalSusds} tickets={ticketCount} />
+        </div>
+      )}
+
       {plan.skipped.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <Note>Not included: {plan.skipped.map(s => `${shortAddr(s.operator)} (${s.reason})`).join(" · ")}</Note>
@@ -152,7 +176,10 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
           className="if-btn if-btn--primary"
           disabled={plan.calls.length === 0 || b.busy || !canPropose}
           title={proposeReason}
-          onClick={() => b.propose(plan.calls)}
+          onClick={() => {
+            noteShort("Proposed");
+            b.propose(plan.calls);
+          }}
         >
           {b.status === "awaiting-wallet" ? <span className="if-spinner" /> : null} Propose as one batch
         </button>
@@ -198,7 +225,8 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
             same bundle as one Safe transaction (one MultiSend, one signature round), without needing this console or a
             wallet connected here. Exporting sends nothing on-chain; the file only becomes a proposal when a Safe signer
             submits it in Safe{"{Wallet}"}. The file carries Safe&apos;s checksum, so a corrupted or edited copy is
-            rejected on import.
+            rejected on import. At execution the Safe must hold the FOLD and sUSDS listed in the checklist above (locked
+            FOLD is fine), or the whole bundle reverts.
           </p>
           <ol className="if-export__steps">
             <li>
@@ -225,7 +253,12 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
             <button type="button" className="if-btn if-btn--primary" disabled={!json} onClick={download}>
               Download batch file · {plan.calls.length} call{plan.calls.length === 1 ? "" : "s"}
             </button>
-            <CopyButton text={json} label="Copy JSON to clipboard" className="if-btn--sm" />
+            <CopyButton
+              text={json}
+              label="Copy JSON to clipboard"
+              className="if-btn--sm"
+              onCopy={() => noteShort("Copied")}
+            />
             <button
               type="button"
               className="if-btn if-btn--ghost if-btn--sm"
@@ -235,6 +268,13 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
               {showJson ? "Hide JSON" : "Show JSON"}
             </button>
           </div>
+          {isShort && (
+            <Note kind={actedWhileShort ? "bad" : "warn"}>
+              {actedWhileShort ? `${actedWhileShort}, but heads up: ` : "Heads up: "}
+              the bond owner {shortAddr(owner)} currently needs {shortText} for this bundle to execute. It can still be
+              imported and signed, but it will revert as a whole unless the Safe is funded before execution.
+            </Note>
+          )}
           {showJson && (
             <pre className="if-json" aria-label="Transaction Builder JSON">
               {json}

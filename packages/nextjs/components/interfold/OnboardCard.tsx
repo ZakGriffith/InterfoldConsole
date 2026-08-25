@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { RequirementsNote } from "./RequirementsNote";
 import { CopyButton, Field, Note } from "./ui";
 import { type Address } from "viem";
 import { useEnsAddress, useEnsName } from "wagmi";
@@ -67,6 +68,10 @@ export const OnboardCard = ({ existing, onStart }: Props) => {
           <CopyButton text={instructions} label="Copy instructions for the node operator" className="if-btn--sm" />
         </div>
       </header>
+
+      <div style={{ marginBottom: 18 }}>
+        <RequirementsNote compact />
+      </div>
 
       <div className="if-fields">
         <Field
