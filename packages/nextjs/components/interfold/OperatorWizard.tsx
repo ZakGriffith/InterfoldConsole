@@ -58,7 +58,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
   const wantMore = s ? maxBig(minTickets - s.availableTickets, 0n) : 0n;
   const [ticketInput, setTicketInput] = useState("");
   useEffect(() => {
-    if (s && ticketInput.trim() === "" && wantMore > 0n) setTicketInput(wantMore.toString());
+    if (s && ticketInput.trim() === "") setTicketInput((wantMore > 0n ? wantMore : 1n).toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantMore, operator]);
   const ticketCount = useMemo(() => parseWholeInput(ticketInput), [ticketInput]);
@@ -122,7 +122,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
     p,
     f,
   );
-  const showBatch = ownerIsContract && ownerSet && !allDone && nodePlan.calls.length >= 2;
+  const showBatch = ownerIsContract && ownerSet && nodePlan.calls.length >= 2;
 
   return (
     <div className="if-guide">
@@ -215,7 +215,11 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
 
       {showBatch && (
         <BatchPanel
-          title="Do every remaining step for this node in one go"
+          title={
+            allDone
+              ? `Buy ${(ticketCount ?? 0n).toString()} more ticket${ticketCount === 1n ? "" : "s"} in one Safe transaction`
+              : "Do every remaining step for this node in one go"
+          }
           plan={nodePlan}
           batchName={`interfold-onboard-${label ? label.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : operator.slice(0, 10)}`}
           showRequirements={false}
@@ -448,6 +452,46 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
             </Step>
           </div>
         </>
+      )}
+
+      {allDone && (
+        <section className="if-card">
+          <div className="if-eyebrow">More tickets</div>
+          <p className="if-card__body" style={{ marginBottom: 12 }}>
+            Each ticket is another entry in the sortition draw ({fmtTokens(p?.ticketPrice, "sUSDS")} each). Holding{" "}
+            {s ? s.availableTickets.toString() : "-"} now; the bond owner has {fmtTokens(f?.susdsBalance, "sUSDS")}.
+          </p>
+          <div className="if-fields">
+            <Field
+              label="Tickets to add"
+              value={ticketInput}
+              onChange={setTicketInput}
+              placeholder="1"
+              invalid={ticketInput.trim() !== "" && ticketCount === null}
+              hint={ticketCost ? `costs ${fmtTokens(ticketCost, "sUSDS")}` : undefined}
+            />
+          </div>
+          {ticketCost && f && !susdsBalanceOk && (
+            <div style={{ marginTop: 10 }}>
+              <Note kind="warn">Not enough sUSDS in the bond owner wallet (it must be sUSDS, not USDS).</Note>
+            </div>
+          )}
+          <div className="if-actions if-actions--steps" style={{ marginTop: 12 }}>
+            <ActionButtons
+              label="Approve sUSDS"
+              variant="ghost"
+              params={approveSusds}
+              done={susdsAllowanceOk}
+              doneLabel="sUSDS approved"
+            />
+            <ActionButtons
+              label="Buy tickets"
+              params={buyTickets}
+              disabled={!susdsAllowanceOk || !susdsBalanceOk}
+              disabledReason={!susdsAllowanceOk ? "approval not executed yet" : "not enough sUSDS"}
+            />
+          </div>
+        </section>
       )}
 
       <div className="if-actions">
