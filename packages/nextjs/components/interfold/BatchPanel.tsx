@@ -5,7 +5,7 @@ import { CopyButton, Note, TxLink } from "./ui";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useSafeBatch } from "~~/hooks/interfold/useSafeBatch";
 import { type Plan, contractName, txBuilderJson } from "~~/utils/interfold/batch";
-import { safeQueue, safeTx } from "~~/utils/interfold/contracts";
+import { safeQueue, safeTx, safeTxBuilder } from "~~/utils/interfold/contracts";
 import { fmtTokens, shortAddr } from "~~/utils/interfold/format";
 
 type Props = {
@@ -22,6 +22,8 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
   const { owner, canWriteAsOwner, isSafe, connected, onMainnet } = useConsole();
   const b = useSafeBatch();
   const [createdAt] = useState(() => Date.now());
+  const [showJson, setShowJson] = useState(false);
+  const fileName = `${batchName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
   const key = plan.calls.map(c => c.data).join("|");
 
   // Any change to the plan invalidates a previous simulation/proposal status.
@@ -43,7 +45,7 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${batchName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -154,17 +156,13 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
         >
           {b.status === "awaiting-wallet" ? <span className="if-spinner" /> : null} Propose as one batch
         </button>
-        <CopyButton text={json} label="Copy Transaction Builder JSON" className="if-btn--sm" />
-        <button type="button" className="if-btn if-btn--ghost if-btn--sm" disabled={!json} onClick={download}>
-          Download JSON
-        </button>
       </div>
 
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
         {plan.calls.length > 0 && !canPropose && (
           <Note>
-            {proposeReason} You can still simulate, or upload the JSON in Safe → Apps → Transaction Builder to propose
-            the same batch.
+            {proposeReason} You can still simulate here, or export the batch below and have any signer of the Safe
+            import it in Transaction Builder.
           </Note>
         )}
         {b.status === "sim-ok" && (
@@ -189,6 +187,61 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
         )}
         {b.status === "error" && <Note kind="bad">{b.error}</Note>}
       </div>
+
+      {plan.calls.length > 0 && (
+        <section className="if-export">
+          <div className="if-eyebrow">Hand-off</div>
+          <h4 className="if-export__title">Export this batch as a file for Safe&apos;s Transaction Builder</h4>
+          <p className="if-card__body">
+            The file describes exactly the {plan.calls.length} calls listed above — targets, function names, amounts, in
+            order — in the format Safe&apos;s <b>Transaction Builder</b> app imports. Whoever uploads it there gets the
+            same bundle as one Safe transaction (one MultiSend, one signature round), without needing this console or a
+            wallet connected here. Exporting sends nothing on-chain; the file only becomes a proposal when a Safe signer
+            submits it in Safe{"{Wallet}"}. The file carries Safe&apos;s checksum, so a corrupted or edited copy is
+            rejected on import.
+          </p>
+          <ol className="if-export__steps">
+            <li>
+              <b>Download</b> the file below (<code>{fileName}</code>) and send it to a signer of{" "}
+              <code>{shortAddr(owner)}</code>.
+            </li>
+            <li>
+              In Safe{"{Wallet}"}, open the Safe and go to <b>Apps → Transaction Builder</b>{" "}
+              <a className="if-link" href={safeTxBuilder(owner)} target="_blank" rel="noreferrer">
+                (direct link for this Safe)
+              </a>
+              .
+            </li>
+            <li>
+              Drag the file onto the <b>Upload a batch</b> area (or click it and pick the file). Transaction Builder
+              validates the checksum and lists every call with its decoded arguments — compare it with the table above.
+            </li>
+            <li>
+              Click <b>Create Batch</b>, then <b>Send Batch</b>, and sign. The bundle appears in the Safe queue for the
+              other signers to confirm and execute, exactly like a batch proposed from here.
+            </li>
+          </ol>
+          <div className="if-actions">
+            <button type="button" className="if-btn if-btn--primary" disabled={!json} onClick={download}>
+              Download batch file · {plan.calls.length} call{plan.calls.length === 1 ? "" : "s"}
+            </button>
+            <CopyButton text={json} label="Copy JSON to clipboard" className="if-btn--sm" />
+            <button
+              type="button"
+              className="if-btn if-btn--ghost if-btn--sm"
+              disabled={!json}
+              onClick={() => setShowJson(v => !v)}
+            >
+              {showJson ? "Hide JSON" : "Show JSON"}
+            </button>
+          </div>
+          {showJson && (
+            <pre className="if-json" aria-label="Transaction Builder JSON">
+              {json}
+            </pre>
+          )}
+        </section>
+      )}
     </section>
   );
 };

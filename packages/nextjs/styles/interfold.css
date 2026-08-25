@@ -1364,3 +1364,50 @@
   color: var(--if-ink-3);
   max-width: 760px;
 }
+
+/* ---- batch export (Transaction Builder hand-off) ---- */
+.if-export {
+  margin-top: 18px;
+  padding: 18px 20px 20px;
+  border: 1px dashed var(--if-accent-soft);
+  border-radius: var(--if-radius-lg);
+  background: color-mix(in oklab, var(--if-accent-bg) 55%, var(--if-paper-2));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.if-export__title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--if-ink);
+  margin: 0;
+}
+.if-export__steps {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--if-ink-2);
+  max-width: 760px;
+}
+.if-export__steps b {
+  color: var(--if-ink);
+}
+.if-json {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px 14px;
+  background: var(--if-paper);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius);
+  font-family: var(--if-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--if-ink-2);
+  white-space: pre;
+}

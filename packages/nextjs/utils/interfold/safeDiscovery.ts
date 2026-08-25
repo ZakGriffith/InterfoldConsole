@@ -24,7 +24,7 @@ export const discoverOperatorsFromSafeHistory = async (
 ): Promise<Address[]> => {
   const ops = new Set<string>();
   let url: string | null =
-    `https://safe-transaction-mainnet.safe.global/api/v1/safes/${safe}/multisig-transactions/?to=${registry}&executed=true&limit=100`;
+    `https://api.safe.global/tx-service/eth/api/v1/safes/${safe}/multisig-transactions/?to=${registry}&executed=true&limit=100`;
   try {
     for (let page = 0; url && page < 10; page++) {
       const res = await fetch(url);
