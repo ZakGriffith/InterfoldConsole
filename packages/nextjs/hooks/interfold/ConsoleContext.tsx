@@ -54,12 +54,13 @@ const Ctx = createContext<ConsoleState | null>(null);
 export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?: ReactNode }) => {
   const acct = useIsSafeAccount();
   const [override, setOverrideState] = useState<Address | undefined>();
-  const [queueMode, setQueueModeState] = useState(false);
+  // Default ON: nothing should lock while earlier steps sit in the Safe queue; turn off to make each step wait on-chain.
+  const [queueMode, setQueueModeState] = useState(true);
   useEffect(() => {
     try {
-      setQueueModeState(localStorage.getItem("interfold.queue-mode") === "1");
+      setQueueModeState(localStorage.getItem("interfold.queue-mode") !== "0");
     } catch {
-      /* default off */
+      /* default on */
     }
   }, []);
   const setQueueMode = useCallback((v: boolean) => {
