@@ -19,7 +19,8 @@ type Props = {
  * hand them the instructions, paste the operator key they send back, start the guide.
  */
 export const OnboardCard = ({ existing, onStart }: Props) => {
-  const { owner, params: p, funds: f } = useConsole();
+  const { owner, ownerIsContract, params: p, funds: f } = useConsole();
+  const ownerWord = ownerIsContract ? "Safe" : "wallet";
   const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
   const [input, setInput] = useState("");
   const [label, setLabel] = useState("");
@@ -50,15 +51,15 @@ export const OnboardCard = ({ existing, onStart }: Props) => {
       <header className="if-card__head">
         <div>
           <div className="if-eyebrow">Onboard a new ciphernode</div>
-          <h2 className="if-card__title">Someone else runs the node; this Safe posts the collateral.</h2>
+          <h2 className="if-card__title">Someone else runs the node; this {ownerWord} posts the collateral.</h2>
           <p className="if-card__body">
             The node operator only has to authorize this bond owner from their operator key. Everything else — bonding{" "}
-            {fmtTokens(p?.requiredCiphernodeBond, "FOLD")}, registering, buying tickets — is proposed from the Safe in
-            the guide below.
+            {fmtTokens(p?.requiredCiphernodeBond, "FOLD")}, registering, buying tickets — is sent from this {ownerWord}{" "}
+            in the guide below.
             {nodesCapacity !== undefined && (
               <>
                 {" "}
-                The Safe can currently fund <b>{nodesCapacity.toString()}</b> more node
+                It can currently fund <b>{nodesCapacity.toString()}</b> more node
                 {nodesCapacity === 1n ? "" : "s"}.
               </>
             )}
@@ -82,7 +83,7 @@ export const OnboardCard = ({ existing, onStart }: Props) => {
           invalid={invalid || isOwner}
           hint={
             isOwner
-              ? "That is the Safe itself. The operator key is the node's hot wallet, never the bond owner."
+              ? "That is the bond owner itself. The operator key is the node's hot wallet, never the bond owner."
               : invalid
                 ? "Not a valid address or ENS name."
                 : known

@@ -48,7 +48,7 @@ export const ActionButtons = ({
   const walletReason =
     requires === "owner"
       ? !connected
-        ? "Connect the bond owner wallet (the Safe) to send this."
+        ? "Connect the bond owner wallet to send this."
         : !onMainnet
           ? "Switch the wallet to Ethereum mainnet."
           : `Connected wallet is not the bond owner ${shortAddr(owner)}.`
@@ -107,8 +107,8 @@ export const ActionButtons = ({
       {!done && !walletOk && params && !disabled && (
         <Note>{walletReason} You can still simulate and copy the calldata.</Note>
       )}
-      {!done && disabled && disabledReason && !queueMode && <Note>{disabledReason}</Note>}
-      {!done && disabled && disabledReason && queueMode && (
+      {!done && disabled && disabledReason && (!queueMode || !isSafe) && <Note>{disabledReason}</Note>}
+      {!done && disabled && disabledReason && queueMode && isSafe && (
         <Note kind="warn">
           Not true on-chain yet: {disabledReason} Queue mode lets you propose it anyway; it succeeds once the earlier
           queued transaction has executed (the Safe runs its queue in order).

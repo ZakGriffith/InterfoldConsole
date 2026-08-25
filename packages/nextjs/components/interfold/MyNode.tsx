@@ -40,6 +40,7 @@ const Inner = () => {
   const {
     owner,
     ownerSource,
+    ownerIsContract,
     setOwnerOverride,
     connected,
     connMode,
@@ -158,9 +159,11 @@ const Inner = () => {
                   Connect
                 </button>
               )}
-              <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
-                Safe queue <span className="if-btn__arrow">→</span>
-              </a>
+              {ownerIsContract && (
+                <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
+                  Safe queue <span className="if-btn__arrow">→</span>
+                </a>
+              )}
             </div>
           </header>
           {canWriteAsOwner && isSafe && (
@@ -205,7 +208,7 @@ const Inner = () => {
               {editingOwner && (
                 <div className="if-fields">
                   <Field
-                    label="Bond owner (the Safe that funds this node)"
+                    label="Bond owner (the wallet or Safe that funds this node)"
                     value={ownerInput}
                     onChange={setOwnerInput}
                     placeholder="0x… or name.eth"
@@ -241,7 +244,7 @@ const Inner = () => {
           )}
           {!connected && (
             <Note>
-              Reads and simulations work without connecting. To propose the transactions you need to be the Safe.
+              Reads and simulations work without connecting. To send the transactions, connect as the bond owner.
             </Note>
           )}
         </section>
@@ -255,7 +258,7 @@ const Inner = () => {
             <CommandBlock command="interfold wallet get" />
             <p className="if-card__body">
               Keep that hot wallet funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it — the
-              Safe posts those.
+              bond owner posts those.
             </p>
             <div style={{ marginTop: 16 }}>
               <RequirementsNote compact />
@@ -269,7 +272,7 @@ const Inner = () => {
                 invalid={invalid || isOwner}
                 hint={
                   isOwner
-                    ? "That is the Safe itself; the operator key is your node's hot wallet."
+                    ? "That is the bond owner itself; the operator key is your node's hot wallet."
                     : invalid
                       ? "Not a valid address."
                       : operatorMode && connected && sameAddr(connected, resolved)
@@ -308,7 +311,7 @@ const Inner = () => {
                 Change
               </button>{" "}
               Each step needs {fmtTokens(params?.requiredCiphernodeBond, "FOLD")} bond and{" "}
-              {fmtTokens(params?.ticketPrice, "sUSDS")} per ticket from the Safe.
+              {fmtTokens(params?.ticketPrice, "sUSDS")} per ticket from the bond owner.
             </Note>
             <OperatorWizard
               operator={myNode}

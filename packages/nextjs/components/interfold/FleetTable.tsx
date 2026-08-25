@@ -45,6 +45,8 @@ type Props = {
   statuses: Record<string, OperatorStatus>;
   selected?: Address;
   onSelect: (a: Address) => void;
+  /** Batching is a Safe (MultiSend) feature; hidden when the owner is a plain wallet. */
+  batchEnabled: boolean;
   batchSelection: ReadonlySet<string>;
   onToggleBatch: (a: Address) => void;
   onSelectAllBatchable: () => void;
@@ -63,6 +65,7 @@ export const FleetTable = ({
   statuses,
   selected,
   onSelect,
+  batchEnabled,
   batchSelection,
   onToggleBatch,
   onSelectAllBatchable,
@@ -99,7 +102,7 @@ export const FleetTable = ({
             )}
             {lastScan ? `last scan ${new Date(lastScan).toLocaleTimeString()}` : "not scanned yet"}
           </span>
-          {batchableCount > 1 && (
+          {batchEnabled && batchableCount > 1 && (
             <button type="button" className="if-btn if-btn--ghost if-btn--sm" onClick={onSelectAllBatchable}>
               Select all ready ({batchableCount})
             </button>
@@ -128,7 +131,9 @@ export const FleetTable = ({
           <table className="if-table">
             <thead>
               <tr>
-                <th title="Tick nodes to propose their remaining steps as one Safe transaction">Batch</th>
+                {batchEnabled && (
+                  <th title="Tick nodes to propose their remaining steps as one Safe transaction">Batch</th>
+                )}
                 <th>Node</th>
                 <th>Status</th>
                 <th className="if-num">Bond (FOLD)</th>
@@ -150,16 +155,18 @@ export const FleetTable = ({
                 const canBatch = batchable(pill);
                 return (
                   <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
-                    <td onClick={e => e.stopPropagation()} style={{ cursor: "default" }}>
-                      <input
-                        type="checkbox"
-                        aria-label={`Include ${op} in batch`}
-                        checked={batchSelection.has(k)}
-                        disabled={!canBatch}
-                        title={canBatch ? "Include in batch" : "Nothing the Safe can batch for this node right now"}
-                        onChange={() => onToggleBatch(op)}
-                      />
-                    </td>
+                    {batchEnabled && (
+                      <td onClick={e => e.stopPropagation()} style={{ cursor: "default" }}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Include ${op} in batch`}
+                          checked={batchSelection.has(k)}
+                          disabled={!canBatch}
+                          title={canBatch ? "Include in batch" : "Nothing the Safe can batch for this node right now"}
+                          onChange={() => onToggleBatch(op)}
+                        />
+                      </td>
+                    )}
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                         {labels[k] && <span style={{ fontWeight: 540 }}>{labels[k]}</span>}
@@ -220,7 +227,8 @@ export const FleetTable = ({
             <span>
               Discovered from BondOwnerSet events and executed Safe transactions; manual entries and labels are stored
               in this browser. A node you added by hand shows “Waiting for node” until its operator runs set-bond-owner.
-              Tick “Batch” on ready nodes to propose all their remaining steps in one Safe transaction.
+              {batchEnabled &&
+                "Tick “Batch” on ready nodes to propose all their remaining steps in one Safe transaction."}
             </span>
           </div>
         </div>

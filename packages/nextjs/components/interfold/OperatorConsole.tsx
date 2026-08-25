@@ -18,7 +18,7 @@ import { REGISTRY, explorerAddress } from "~~/utils/interfold/contracts";
 import { sameAddr } from "~~/utils/interfold/format";
 
 const Inner = () => {
-  const { owner, params, paramsLoading, paramsError, connected, onMainnet, funds } = useConsole();
+  const { owner, ownerIsContract, params, paramsLoading, paramsError, connected, onMainnet, funds } = useConsole();
   const list = useOperatorList(owner);
   const fleet = useFleetStatus(list.operators);
   const [selected, setSelected] = useState<Address>();
@@ -113,6 +113,7 @@ const Inner = () => {
         statuses={fleet.statuses}
         selected={selected}
         onSelect={setSelected}
+        batchEnabled={ownerIsContract}
         batchSelection={batchSel}
         onToggleBatch={toggleBatch}
         onSelectAllBatchable={selectAllBatchable}
@@ -123,7 +124,7 @@ const Inner = () => {
         refetch={() => list.refetch()}
       />
 
-      {batchNodes.length > 0 && (
+      {ownerIsContract && batchNodes.length > 0 && (
         <BatchPanel
           eyebrow="Batch"
           title={`One Safe transaction for ${batchNodes.length} node${batchNodes.length === 1 ? "" : "s"}`}

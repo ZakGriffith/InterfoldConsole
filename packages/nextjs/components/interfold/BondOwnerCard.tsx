@@ -15,11 +15,12 @@ const SOURCE_LABEL = {
   override: "Viewing as",
 } as const;
 
-/** View A: the bond owner (the Safe) — who it is, what it holds, what it can still fund. */
+/** View A: the bond owner (a Safe or a plain wallet) — who it is, what it holds, what it can still fund. */
 export const BondOwnerCard = () => {
   const {
     owner,
     ownerSource,
+    ownerIsContract,
     setOwnerOverride,
     connected,
     connMode,
@@ -65,9 +66,11 @@ export const BondOwnerCard = () => {
           </div>
         </div>
         <div className="if-actions">
-          <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
-            Safe queue <span className="if-btn__arrow">→</span>
-          </a>
+          {ownerIsContract && (
+            <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
+              Safe queue <span className="if-btn__arrow">→</span>
+            </a>
+          )}
           <a className="if-btn if-btn--ghost if-btn--sm" href={LINKS.dashboard} target="_blank" rel="noreferrer">
             Official dashboard <span className="if-btn__arrow">→</span>
           </a>

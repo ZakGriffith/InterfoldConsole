@@ -51,6 +51,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
   const {
     owner,
     ownerSource,
+    ownerIsContract,
     params: p,
     funds: f,
     connected,
@@ -176,7 +177,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
     p,
     f,
   );
-  const showBatch = ownerSet && !allDone && nodePlan.calls.length >= 2;
+  const showBatch = ownerIsContract && ownerSet && !allDone && nodePlan.calls.length >= 2;
   const [labelDraft, setLabelDraft] = useState(label);
   useEffect(() => setLabelDraft(label), [label, operator]);
 
@@ -267,14 +268,14 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         />
       )}
 
-      <QueueModeToggle />
+      {isSafe && <QueueModeToggle />}
 
       <div className="if-steps">
         {/* 1 */}
         <Step
           num={1}
           title="Connect the bond owner"
-          lede="Every step below is a transaction sent by the bond owner. Open this page as a Safe App inside app.safe.global (Apps → My custom apps → Add custom Safe App → this URL), or pair Safe{Wallet} through WalletConnect. Reads and simulations work without a wallet."
+          lede="Every step below is a transaction sent by the bond owner. If that is a plain wallet, just connect it. If it is a Safe, open this page as a Safe App inside app.safe.global (Apps → My custom apps → Add custom Safe App → this URL) or pair Safe{Wallet} through WalletConnect, and each step becomes a proposal for its signers."
           state={walletState}
         >
           <Dl
@@ -336,7 +337,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         <Step
           num={2}
           title="Authorize the bond owner"
-          lede="The operator key is the hot key your node runs with. The bond owner is the wallet that funds and controls its collateral — here, the Safe. Authorization is sent by the operator key itself: it is how the node lets a wallet post collateral on its behalf."
+          lede="The operator key is the hot key your node runs with. The bond owner is the wallet that funds and controls its collateral — a plain wallet or a Safe. Authorization is sent by the operator key itself: it is how the node lets a wallet post collateral on its behalf."
           state={stateOf(0)}
         >
           <Dl

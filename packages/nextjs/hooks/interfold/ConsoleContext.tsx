@@ -2,7 +2,7 @@
 
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { type Address, zeroAddress } from "viem";
-import { useReadContract } from "wagmi";
+import { useBytecode, useReadContract } from "wagmi";
 import { ConnectGate, OwnerPrompt } from "~~/components/interfold/ConnectGate";
 import { Loader } from "~~/components/interfold/ui";
 import { type ConnectionMode, useIsSafeAccount } from "~~/hooks/interfold/useIsSafeAccount";
@@ -23,6 +23,8 @@ export type ConsoleState = {
   owner: Address;
   ownerSource: OwnerSource;
   setOwnerOverride: (a: Address | undefined) => void;
+  /** The bond owner has code (a Safe or other smart account) vs. a plain key. Drives Safe-only UI. */
+  ownerIsContract: boolean;
   /** True when the connected wallet *is* the owner on mainnet: owner-only writes may be sent. */
   canWriteAsOwner: boolean;
   /** True when a plain key that is not the owner is connected: only operator-side calls make sense. */
@@ -119,6 +121,12 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
 
   const params = useRegistryParams();
   const funds = useOwnerFunds(resolved?.owner);
+  const { data: ownerCode } = useBytecode({
+    address: resolved?.owner,
+    chainId: CHAIN_ID,
+    query: { enabled: !!resolved?.owner },
+  });
+  const ownerIsContract = !!ownerCode && ownerCode !== "0x";
 
   if (!acct.address || !acct.isConnected || !resolved) return <>{gate ?? <ConnectGate />}</>;
   // Plain key with no override yet: wait for its balances before deciding owner vs. hot wallet (no flash).
@@ -148,6 +156,7 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
     onMainnet: acct.onMainnet,
     owner,
     ownerSource,
+    ownerIsContract,
     setOwnerOverride,
     canWriteAsOwner,
     operatorMode,
