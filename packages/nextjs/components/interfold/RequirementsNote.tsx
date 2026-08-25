@@ -5,7 +5,7 @@ import { type Address } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OwnerFunds, susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
 import { type RegistryParams } from "~~/hooks/interfold/useRegistryParams";
-import { fmtTokens, maxBig } from "~~/utils/interfold/format";
+import { fmtEth, fmtTokens, maxBig } from "~~/utils/interfold/format";
 
 type Amounts = {
   /** Exact amounts a specific batch will pull. Omit to show the per-node minimum instead. */
@@ -14,7 +14,11 @@ type Amounts = {
   /** Number of tickets the sUSDS figure represents (for the label). */
   tickets?: bigint;
   compact?: boolean;
+  /** The node hot wallet ETH balance, when a specific node is in view; turns the gas row into a real check. */
+  nodeEth?: bigint;
 };
+
+const MIN_NODE_ETH = 10n ** 16n; // 0.01 ETH
 
 const Row = ({ ok, children }: { ok: boolean | undefined; children: React.ReactNode }) => (
   <li className={`if-req__row ${ok === undefined ? "" : ok ? "if-req__row--ok" : "if-req__row--bad"}`}>
@@ -38,6 +42,7 @@ export const RequirementsList = ({
   susdsNeeded,
   tickets,
   compact,
+  nodeEth,
 }: Amounts & { owner?: Address; params?: RegistryParams; funds?: OwnerFunds }) => {
   if (!p) return null;
   const minTickets = maxBig(1n, p.minTicketBalance);
@@ -81,9 +86,17 @@ export const RequirementsList = ({
           . This must be <b>sUSDS</b> (USDS deposited into Sky Savings at sky.money), not plain USDS or DAI; a plain
           USDS balance does not count.
         </Row>
-        <Row ok={undefined}>
-          The <b>node&apos;s own hot wallet</b> needs a little ETH for gas (≥ 0.01 ETH, ideally ~0.05) to submit
-          sortition tickets and committee transactions. It should never hold FOLD or sUSDS.
+        <Row ok={nodeEth === undefined ? undefined : nodeEth >= MIN_NODE_ETH}>
+          The <b>node&apos;s own hot wallet</b> needs a little ETH for gas (at least 0.01 ETH, ideally about 0.05) to
+          submit sortition tickets and committee transactions
+          {nodeEth !== undefined && (
+            <>
+              {" "}
+              (holds {fmtEth(nodeEth)}
+              {nodeEth < MIN_NODE_ETH && <>; top it up before the node goes active</>})
+            </>
+          )}
+          . It should never hold FOLD or sUSDS.
         </Row>
       </ul>
       {!perNode && (

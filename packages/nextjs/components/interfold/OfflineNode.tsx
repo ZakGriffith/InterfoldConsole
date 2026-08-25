@@ -216,6 +216,7 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
         {operator && s && params && (
           <>
             <RequirementsList
+              nodeEth={s.ethBalance}
               owner={owner}
               params={params}
               funds={funds}
