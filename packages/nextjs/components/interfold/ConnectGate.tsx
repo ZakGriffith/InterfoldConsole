@@ -20,10 +20,9 @@ export const ConnectGate = () => {
           <div className="if-eyebrow">Ciphernode Console</div>
           <h1 className="if-guide__title">Connect a wallet to see its ciphernodes.</h1>
           <p className="if-guide__lede">
-            This console lets a bond owner, typically a Gnosis Safe, bond FOLD, register, buy sUSDS tickets, monitor and
-            exit Interfold ciphernodes, for as many nodes as it funds. Open it as a Safe App inside Safe
-            {"{Wallet}"} (Apps → My custom apps → this URL) or pair through WalletConnect to act as the Safe. Connect a
-            node&apos;s hot wallet instead to authorize a bond owner for that node.
+            Bond, register, buy tickets, monitor and exit Interfold ciphernodes from the wallet that funds them,
+            typically a Safe: open this page as a Safe App inside Safe{"{Wallet}"} or pair through WalletConnect. To set
+            up your own node without connecting anything, use the Your node tab.
           </p>
         </header>
         <div className="if-actions">

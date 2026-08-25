@@ -45,9 +45,11 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
   const ownerIn = useAddressInput();
   const [ticketsIn, setTicketsIn] = useState("1");
 
+  // ?op=0x… (or ENS) prefills the node so a link can be shared; otherwise the last pasted key is restored.
   useEffect(() => {
     try {
-      const v = localStorage.getItem(YOUR_NODE_KEY);
+      const fromUrl = new URLSearchParams(window.location.search).get("op");
+      const v = fromUrl ?? localStorage.getItem(YOUR_NODE_KEY);
       if (v) op.setInput(v);
     } catch {
       /* ignore */
