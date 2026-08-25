@@ -1328,3 +1328,39 @@
 .if-cmd .if-btn {
   flex: none;
 }
+
+/* ---- queue mode toggle ---- */
+.if-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--if-paper-2);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+  cursor: pointer;
+}
+.if-toggle--on {
+  border-color: var(--if-accent-soft);
+  background: var(--if-accent-bg);
+}
+.if-toggle input {
+  margin-top: 3px;
+}
+.if-toggle__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.if-toggle__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--if-ink);
+}
+.if-toggle__sub {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--if-ink-3);
+  max-width: 760px;
+}

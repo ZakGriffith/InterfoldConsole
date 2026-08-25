@@ -112,12 +112,12 @@ export const ConnectCta = () => {
   return (
     <main className="if-main if-cta">
       <div className="if-cta__box">
-        <div className="if-eyebrow">Safe signers · connect your node</div>
+        <div className="if-eyebrow">Node operators · connect your node</div>
         <h1 className="if-guide__title">Connect your wallet to set up your node.</h1>
         <p className="if-guide__lede">
-          Connect as the Safe that will fund your ciphernode (open this page as a Safe App inside Safe{"{Wallet}"}, or
-          pair through WalletConnect), or connect the node&apos;s own hot wallet to authorize that Safe. The guide
-          appears as soon as a wallet is connected.
+          Connect as the bond owner that funds your ciphernode — your own wallet, or a Safe (open this page as a Safe
+          App inside Safe{"{Wallet}"} or pair through WalletConnect) — or connect the node&apos;s own hot wallet to
+          authorize its bond owner. The guide appears as soon as a wallet is connected.
         </p>
         <div className="if-actions if-cta__actions">
           <button type="button" className="if-btn if-btn--primary" onClick={() => openConnectModal?.()}>

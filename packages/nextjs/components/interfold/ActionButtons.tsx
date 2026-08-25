@@ -36,7 +36,7 @@ export const ActionButtons = ({
   requires = "owner",
 }: Props) => {
   const w = useSafeAwareWrite();
-  const { canWriteAsOwner, connected, onMainnet, isSafe, owner } = useConsole();
+  const { canWriteAsOwner, connected, onMainnet, isSafe, owner, queueMode } = useConsole();
   const [showCalldata, setShowCalldata] = useState(false);
 
   useEffect(() => {
@@ -56,9 +56,16 @@ export const ActionButtons = ({
         ? "Connect the operator's hot wallet to send this."
         : "Switch the wallet to Ethereum mainnet.";
 
-  const sendDisabled = !params || !!done || !!disabled || !walletOk || w.busy;
+  // Queue mode keeps prerequisite-gated actions available so several steps can be proposed back-to-back.
+  const gated = !!disabled && !queueMode;
+  const sendDisabled = !params || !!done || gated || !walletOk || w.busy;
   const simDisabled = !params || w.busy;
-  const sendLabel = w.status === "awaiting-wallet" ? "Confirm in wallet…" : isSafe ? `${label} · propose` : label;
+  const sendLabel =
+    w.status === "awaiting-wallet"
+      ? "Confirm in wallet…"
+      : isSafe
+        ? `${label} · ${queueMode ? "queue" : "propose"}`
+        : label;
 
   const calldata = params ? w.calldata(params) : undefined;
   const exportJson = params
@@ -81,7 +88,7 @@ export const ActionButtons = ({
           type="button"
           className={`if-btn if-btn--${variant}`}
           disabled={sendDisabled}
-          onClick={() => params && w.write(params)}
+          onClick={() => params && w.write(params, { proceedOnRevert: queueMode })}
           title={done ? doneLabel : !walletOk ? walletReason : disabledReason}
         >
           {w.status === "awaiting-wallet" ? <span className="if-spinner" /> : null}
@@ -100,7 +107,18 @@ export const ActionButtons = ({
       {!done && !walletOk && params && !disabled && (
         <Note>{walletReason} You can still simulate and copy the calldata.</Note>
       )}
-      {!done && disabled && disabledReason && <Note>{disabledReason}</Note>}
+      {!done && disabled && disabledReason && !queueMode && <Note>{disabledReason}</Note>}
+      {!done && disabled && disabledReason && queueMode && (
+        <Note kind="warn">
+          Not true on-chain yet: {disabledReason} Queue mode lets you propose it anyway; it succeeds once the earlier
+          queued transaction has executed (the Safe runs its queue in order).
+        </Note>
+      )}
+      {w.simWarning && (w.status === "awaiting-wallet" || w.status === "proposed" || w.status === "sent") && (
+        <Note kind="warn">
+          Simulation reverted ({w.simWarning}) — expected while the prerequisite is still queued. Sent anyway.
+        </Note>
+      )}
 
       {w.status === "simulating" && (
         <Note>

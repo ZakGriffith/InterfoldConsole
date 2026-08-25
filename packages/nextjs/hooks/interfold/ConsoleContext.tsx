@@ -32,6 +32,13 @@ export type ConsoleState = {
   paramsError?: Error;
   funds?: OwnerFunds;
   fundsLoading: boolean;
+  /**
+   * Queue mode: keep every action available and propose steps back-to-back even when an earlier
+   * step has not executed yet. Gates and reverting simulations become warnings; the Safe executes
+   * the queue in nonce order.
+   */
+  queueMode: boolean;
+  setQueueMode: (v: boolean) => void;
 };
 
 const Ctx = createContext<ConsoleState | null>(null);
@@ -47,6 +54,22 @@ const Ctx = createContext<ConsoleState | null>(null);
 export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?: ReactNode }) => {
   const acct = useIsSafeAccount();
   const [override, setOverrideState] = useState<Address | undefined>();
+  const [queueMode, setQueueModeState] = useState(false);
+  useEffect(() => {
+    try {
+      setQueueModeState(localStorage.getItem("interfold.queue-mode") === "1");
+    } catch {
+      /* default off */
+    }
+  }, []);
+  const setQueueMode = useCallback((v: boolean) => {
+    setQueueModeState(v);
+    try {
+      localStorage.setItem("interfold.queue-mode", v ? "1" : "0");
+    } catch {
+      /* in-memory only */
+    }
+  }, []);
 
   // A typed bond owner (hot-wallet flow) survives reloads until set-bond-owner lands on-chain.
   const overrideKey = acct.address ? `interfold.owner-override.${acct.address.toLowerCase()}` : undefined;
@@ -132,6 +155,8 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
     paramsError: params.error,
     funds: funds.data,
     fundsLoading: funds.isLoading,
+    queueMode,
+    setQueueMode,
   };
 
   if (needsOwnerPrompt) return <OwnerPrompt connected={acct.address} onPick={setOwnerOverride} />;

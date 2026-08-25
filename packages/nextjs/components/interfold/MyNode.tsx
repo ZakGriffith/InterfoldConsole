@@ -8,7 +8,7 @@ import { ParamsStrip } from "./ParamsStrip";
 import { AddressLink, Badge, CommandBlock, Empty, Field, Loader, Note } from "./ui";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address } from "viem";
-import { useEnsAddress, useEnsName } from "wagmi";
+import { useEnsAddress } from "wagmi";
 import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useOperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { useOperatorList } from "~~/hooks/interfold/useOperatorList";
@@ -50,7 +50,6 @@ const Inner = () => {
     paramsLoading,
   } = useConsole();
   const { openConnectModal } = useConnectModal();
-  const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
   const list = useOperatorList(owner);
 
   const [myNode, setMyNode] = useState<Address>();
@@ -107,16 +106,14 @@ const Inner = () => {
     <main className="if-main">
       <div className="if-guide">
         <header className="if-guide__head">
-          <div className="if-eyebrow">Safe signers</div>
-          <h1 className="if-guide__title">Connect your own node to {ownerEns ?? "the Safe"}.</h1>
+          <div className="if-eyebrow">Node operators</div>
+          <h1 className="if-guide__title">Connect your own node.</h1>
           <p className="if-guide__lede">
-            You run a ciphernode and you are one of the signers of the Safe that posts its collateral. Open this page
-            inside Safe{"{Wallet}"} as the Safe (Apps → My custom apps → this URL) so the bonding steps are proposed
-            from it; each proposal needs the Safe&apos;s signature threshold, so ask your co-signers to confirm in the{" "}
-            <a className="if-link" href={safeQueue(owner)} target="_blank" rel="noreferrer">
-              queue
-            </a>
-            . Authorizing the bond owner is the one step your node&apos;s own key signs.
+            You run a ciphernode; a bond owner posts its collateral. That owner can be your own wallet or a Safe you
+            sign for. Connect as the bond owner to bond, register and buy tickets — for a Safe, open this page as a Safe
+            App inside Safe{"{Wallet}"} (Apps → My custom apps → this URL) or pair through WalletConnect, and each
+            action becomes a proposal for the Safe&apos;s signers. Authorizing the bond owner is the one step your
+            node&apos;s own key signs.
           </p>
         </header>
 
@@ -167,8 +164,14 @@ const Inner = () => {
           </header>
           {canWriteAsOwner && isSafe && (
             <Note kind="good">
-              You are acting as {ownerEns ?? owner}. Bond, register and ticket actions below will be proposed to the
-              Safe.
+              Acting as the bond owner <AddressLink address={owner} />. Bond, register and ticket actions below are
+              proposed to this Safe for its signers to confirm.
+            </Note>
+          )}
+          {canWriteAsOwner && !isSafe && (
+            <Note kind="good">
+              Acting as the bond owner <AddressLink address={owner} /> (a plain key). Transactions are sent directly
+              from this wallet.
             </Note>
           )}
           {operatorMode && (
@@ -229,10 +232,10 @@ const Inner = () => {
               )}
             </div>
           )}
-          {connected && !isSafe && !operatorMode && (
+          {connected && !isSafe && !operatorMode && !canWriteAsOwner && (
             <Note kind="warn">
-              A plain key is connected that is neither the Safe nor a node. Open this page as a Safe App to act as{" "}
-              {ownerEns ?? owner}.
+              This wallet is neither the bond owner <AddressLink address={owner} /> nor a node&apos;s key. Connect as
+              the bond owner (as a Safe App or via WalletConnect for a Safe) to send the bonding steps.
             </Note>
           )}
           {!connected && (

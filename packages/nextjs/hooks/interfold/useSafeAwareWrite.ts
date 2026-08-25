@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type Abi, type Address, type Hex, encodeFunctionData } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
@@ -53,7 +53,10 @@ export const useSafeAwareWrite = () => {
   const [hash, setHash] = useState<Hex>();
   const [rawError, setRawError] = useState<string>();
   const [simulatedAs, setSimulatedAs] = useState<Address>();
+  /** Set when a write was sent despite a reverting simulation (queue mode). */
+  const [simWarning, setSimWarning] = useState<string>();
 
+  const rawErrorRef = useRef<string | undefined>(undefined);
   const simulate = useCallback(
     async (p: WriteParams): Promise<boolean> => {
       if (!publicClient) return false;
@@ -72,7 +75,9 @@ export const useSafeAwareWrite = () => {
         setStatus("sim-ok");
         return true;
       } catch (e) {
-        setRawError(parseContractError(e));
+        const msg = parseContractError(e);
+        rawErrorRef.current = msg;
+        setRawError(msg);
         setStatus("sim-fail");
         return false;
       }
@@ -81,8 +86,15 @@ export const useSafeAwareWrite = () => {
   );
 
   const write = useCallback(
-    async (p: WriteParams) => {
-      if (!(await simulate(p))) return;
+    async (p: WriteParams, opts?: { proceedOnRevert?: boolean }) => {
+      setSimWarning(undefined);
+      const ok = await simulate(p);
+      if (!ok) {
+        if (!opts?.proceedOnRevert) return;
+        // Queue mode: the revert is expected while a prerequisite transaction is still queued.
+        setSimWarning(rawErrorRef.current);
+        setRawError(undefined);
+      }
       setStatus("awaiting-wallet");
       try {
         const h = await writeContractAsync({
@@ -128,6 +140,7 @@ export const useSafeAwareWrite = () => {
     setHash(undefined);
     setRawError(undefined);
     setSimulatedAs(undefined);
+    setSimWarning(undefined);
   }, []);
 
   const busy = status === "simulating" || status === "awaiting-wallet";
@@ -139,6 +152,7 @@ export const useSafeAwareWrite = () => {
     error: rawError ? explainError(rawError) : undefined,
     revert: revertName(rawError),
     simulatedAs,
+    simWarning: simWarning ? explainError(simWarning) : undefined,
     busy,
     simulate,
     write,

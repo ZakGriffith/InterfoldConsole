@@ -4,7 +4,8 @@ import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
   title: "Connect your node",
-  description: "Safe signers: connect your own Interfold ciphernode with the Safe as its bond owner",
+  description:
+    "Node operators: connect your own Interfold ciphernode and set up its bond owner (your wallet or a Safe)",
 });
 
 const MyNodePage: NextPage = () => {

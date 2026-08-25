@@ -5,6 +5,7 @@ import { ActionButtons } from "./ActionButtons";
 import { BatchPanel } from "./BatchPanel";
 import { ExitPanel } from "./ExitPanel";
 import { statusPill } from "./FleetTable";
+import { QueueModeToggle } from "./QueueModeToggle";
 import { AddressLink, Badge, CommandBlock, CopyButton, Dl, Field, Note, Step, type StepState } from "./ui";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address, formatUnits, parseEther, zeroAddress } from "viem";
@@ -265,6 +266,8 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
           batchName={`interfold-onboard-${label ? label.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : operator.slice(0, 10)}`}
         />
       )}
+
+      <QueueModeToggle />
 
       <div className="if-steps">
         {/* 1 */}
