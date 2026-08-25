@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CopyButton, Note, TxLink } from "./ui";
+import { useEffect } from "react";
+import { Note, TxLink } from "./ui";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type WriteParams, useSafeAwareWrite } from "~~/hooks/interfold/useSafeAwareWrite";
 import { safeQueue, safeTx } from "~~/utils/interfold/contracts";
@@ -11,10 +11,10 @@ type Props = {
   label: string;
   params?: WriteParams;
   variant?: "primary" | "ghost" | "danger";
-  /** Blocks Propose/Send only; Simulate and Copy calldata always work. */
+  /** An on-chain prerequisite is not met; in queue mode this only produces a note. */
   disabled?: boolean;
   disabledReason?: string;
-  /** When the gating read is already satisfied: show `doneLabel`, disable, and reset any stale status. */
+  /** The gating read is already satisfied: show `doneLabel`, disable, reset stale status. */
   done?: boolean;
   doneLabel?: string;
   /** Owner-only calls require the connected wallet to be the owner; operator calls require the hot wallet. */
@@ -22,8 +22,8 @@ type Props = {
 };
 
 /**
- * Simulate -> Propose to Safe (or Send) -> status line, plus a calldata export so the identical
- * call can be pasted into the Safe Transaction Builder or ABI.ninja if a connector misbehaves.
+ * One button per action. Every click simulates first (as the bond owner) and then proposes to the
+ * Safe or sends from a plain wallet; the line underneath reports what happened.
  */
 export const ActionButtons = ({
   label,
@@ -37,7 +37,6 @@ export const ActionButtons = ({
 }: Props) => {
   const w = useSafeAwareWrite();
   const { canWriteAsOwner, connected, onMainnet, isSafe, owner, queueMode } = useConsole();
-  const [showCalldata, setShowCalldata] = useState(false);
 
   useEffect(() => {
     if (done && w.status !== "idle") w.reset();
@@ -53,86 +52,41 @@ export const ActionButtons = ({
           ? "Switch the wallet to Ethereum mainnet."
           : `Connected wallet is not the bond owner ${shortAddr(owner)}.`
       : !connected
-        ? "Connect the operator's hot wallet to send this."
+        ? "Connect the node hot wallet to send this."
         : "Switch the wallet to Ethereum mainnet.";
 
-  // Queue mode keeps prerequisite-gated actions available so several steps can be proposed back-to-back.
-  const gated = !!disabled && !queueMode;
+  const gated = !!disabled && !(queueMode && isSafe);
   const sendDisabled = !params || !!done || gated || !walletOk || w.busy;
-  const simDisabled = !params || w.busy;
-  const sendLabel =
-    w.status === "awaiting-wallet"
-      ? "Confirm in wallet…"
-      : isSafe
-        ? `${label} · ${queueMode ? "queue" : "propose"}`
-        : label;
-
-  const calldata = params ? w.calldata(params) : undefined;
-  const exportJson = params
-    ? JSON.stringify({ to: params.address, value: "0", data: calldata, summary: params.summary ?? params.functionName })
-    : "";
+  const text = done && doneLabel ? doneLabel : w.busy ? "Working…" : isSafe ? `${label} · propose` : label;
 
   return (
-    <div className="if-step__content" style={{ marginTop: 0 }}>
-      <div className="if-actions">
-        <button
-          type="button"
-          className="if-btn if-btn--ghost"
-          disabled={simDisabled}
-          onClick={() => params && w.simulate(params)}
-        >
-          {w.status === "simulating" ? <span className="if-spinner" /> : null}
-          Simulate
-        </button>
-        <button
-          type="button"
-          className={`if-btn if-btn--${variant}`}
-          disabled={sendDisabled}
-          onClick={() => params && w.write(params, { proceedOnRevert: queueMode })}
-          title={done ? doneLabel : !walletOk ? walletReason : disabledReason}
-        >
-          {w.status === "awaiting-wallet" ? <span className="if-spinner" /> : null}
-          {done && doneLabel ? doneLabel : sendLabel}
-        </button>
-        <button
-          type="button"
-          className="if-btn if-btn--ghost if-btn--sm"
-          disabled={!params}
-          onClick={() => setShowCalldata(s => !s)}
-        >
-          {showCalldata ? "Hide calldata" : "Calldata"}
-        </button>
-      </div>
-
-      {!done && !walletOk && params && !disabled && (
-        <Note>{walletReason} You can still simulate and copy the calldata.</Note>
-      )}
-      {!done && disabled && disabledReason && (!queueMode || !isSafe) && <Note>{disabledReason}</Note>}
-      {!done && disabled && disabledReason && queueMode && isSafe && (
-        <Note kind="warn">
-          Not true on-chain yet: {disabledReason} Queue mode lets you propose it anyway; it succeeds once the earlier
-          queued transaction has executed (the Safe runs its queue in order).
-        </Note>
+    <div className="if-action">
+      <button
+        type="button"
+        className={`if-btn if-btn--${variant}`}
+        disabled={sendDisabled}
+        onClick={() => params && w.write(params, { proceedOnRevert: queueMode && isSafe })}
+        title={done ? doneLabel : !walletOk ? walletReason : disabled ? disabledReason : undefined}
+      >
+        {w.busy ? <span className="if-spinner" /> : null}
+        {text}
+      </button>
+      {!done && params && !walletOk && !disabled && <span className="if-action__hint">{walletReason}</span>}
+      {!done && disabled && disabledReason && (
+        <span className={`if-action__hint ${queueMode && isSafe ? "if-action__hint--warn" : ""}`}>
+          {queueMode && isSafe
+            ? `Not on-chain yet (${disabledReason}). Fine if the earlier step is queued ahead.`
+            : disabledReason}
+        </span>
       )}
       {w.simWarning && (w.status === "awaiting-wallet" || w.status === "proposed" || w.status === "sent") && (
         <Note kind="warn">
-          Simulation reverted ({w.simWarning}). That is expected while the prerequisite is still queued. Sent anyway.
-        </Note>
-      )}
-
-      {w.status === "simulating" && (
-        <Note>
-          Simulating as <code>{shortAddr(w.simulatedAs)}</code>…
-        </Note>
-      )}
-      {w.status === "sim-ok" && (
-        <Note kind="good">
-          Simulation succeeded as <code>{shortAddr(w.simulatedAs)}</code>. This call would not revert right now.
+          Simulation reverted ({w.simWarning}); expected while the prerequisite is queued. Sent anyway.
         </Note>
       )}
       {w.status === "sim-fail" && (
         <Note kind="bad">
-          Would revert as <code>{shortAddr(w.simulatedAs)}</code>: {w.error}
+          Would revert as {shortAddr(w.simulatedAs)}: {w.error}
           {w.revert && (
             <>
               {" "}
@@ -142,49 +96,20 @@ export const ActionButtons = ({
         </Note>
       )}
       {w.status === "awaiting-wallet" && (
-        <Note>
-          Waiting for the wallet. For a Safe this resolves once the first signature is collected (some connectors wait
-          for execution). The page tracks the on-chain state either way, so it is safe to leave.
-        </Note>
+        <Note>Confirm in the wallet. For a Safe this returns after the first signature.</Note>
       )}
       {w.status === "proposed" && (
         <Note kind="good">
-          Proposed to the Safe · safeTxHash {w.hash && <TxLink hash={w.hash} href={safeTx(owner, w.hash)} />} · waiting
-          for on-chain change… Collect the remaining signatures in the{" "}
+          Proposed {w.hash && <TxLink hash={w.hash} href={safeTx(owner, w.hash)} />}. Collect signatures in the{" "}
           <a className="if-link" href={safeQueue(owner)} target="_blank" rel="noreferrer">
             Safe queue
           </a>
-          .
+          ; this page updates once it executes.
         </Note>
       )}
-      {w.status === "sent" && <Note>Sent {w.hash && <TxLink hash={w.hash} />} · waiting for confirmation…</Note>}
-      {w.status === "confirmed" && (
-        <Note kind="good">Confirmed {w.hash && <TxLink hash={w.hash} />}. Reads refresh on the next poll.</Note>
-      )}
+      {w.status === "sent" && <Note>Sent {w.hash && <TxLink hash={w.hash} />}. Waiting for confirmation.</Note>}
+      {w.status === "confirmed" && <Note kind="good">Confirmed {w.hash && <TxLink hash={w.hash} />}.</Note>}
       {w.status === "error" && <Note kind="bad">{w.error}</Note>}
-
-      {showCalldata && params && calldata && (
-        <dl className="if-calldata">
-          <dt>to</dt>
-          <dd>{params.address}</dd>
-          <dt>value</dt>
-          <dd>0</dd>
-          <dt>function</dt>
-          <dd>
-            {params.functionName}({(params.args ?? []).map(a => String(a)).join(", ")})
-          </dd>
-          <dt>data</dt>
-          <dd>{calldata}</dd>
-          <dt></dt>
-          <dd style={{ fontFamily: "var(--if-sans)", gap: 8, display: "flex", flexWrap: "wrap" }}>
-            <CopyButton text={calldata} label="Copy data" />
-            <CopyButton text={exportJson} label="Copy as JSON" />
-            <span style={{ color: "var(--if-ink-4)", fontSize: 12 }}>
-              Paste into Safe → Apps → Transaction Builder (custom data) or abi.ninja.
-            </span>
-          </dd>
-        </dl>
-      )}
     </div>
   );
 };

@@ -11,10 +11,7 @@ export const QueueModeToggle = () => {
       <span className="if-toggle__body">
         <span className="if-toggle__title">Queue mode {queueMode ? "on" : "off"}</span>
         <span className="if-toggle__sub">
-          Keep every step available so you can propose approve, bond, register and tickets one after another without
-          waiting for each to execute. Steps whose prerequisite is still queued show a warning instead of locking, and
-          the Safe executes the queue in order. On by default. Off: each step waits for the previous one to execute
-          on-chain.
+          Propose steps back-to-back without waiting for each to execute; the Safe runs its queue in order.
         </span>
       </span>
     </label>

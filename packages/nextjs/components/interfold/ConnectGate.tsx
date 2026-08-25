@@ -36,11 +36,6 @@ export const ConnectGate = () => {
         </div>
         <NetworkPulse />
         <ParamsStrip />
-        <Note>
-          Every transaction is simulated as the connected wallet before it is proposed, and Safe proposals are never
-          awaited: the page follows on-chain state. Nothing is stored server-side; labels and manual entries live in
-          your browser.
-        </Note>
       </div>
     </main>
   );

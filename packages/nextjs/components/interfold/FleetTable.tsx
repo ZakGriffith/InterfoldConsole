@@ -1,11 +1,14 @@
 "use client";
 
-import { AddressLink, Badge, type BadgeKind, Empty, Note } from "./ui";
+import { useState } from "react";
+import { AddressLink, Badge, type BadgeKind, CopyButton, Empty, Field, Note } from "./ui";
 import { type Address, parseEther } from "viem";
+import { useEnsAddress, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type OperatorSource } from "~~/hooks/interfold/useOperatorList";
-import { fmtEth, fmtTokens, sameAddr } from "~~/utils/interfold/format";
+import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
+import { operatorInstructions } from "~~/utils/interfold/instructions";
 
 const LOW_ETH = parseEther("0.01");
 
@@ -33,9 +36,8 @@ export const statusPill = (
   return { label: "Registered · inactive", kind: "open" };
 };
 
-/** True when the row still needs something from the bond owner or the node operator. */
 export const needsAttention = (pill: StatusPill) => pill.kind !== "published";
-/** True when the Safe can act on this node right now (authorized, no exit, something left to do). */
+/** The bond owner can act on this node right now (authorized, no exit, something left to do). */
 export const batchable = (pill: StatusPill) => pill.kind === "working";
 
 type Props = {
@@ -45,11 +47,11 @@ type Props = {
   statuses: Record<string, OperatorStatus>;
   selected?: Address;
   onSelect: (a: Address) => void;
-  /** Batching is a Safe (MultiSend) feature; hidden when the owner is a plain wallet. */
   batchEnabled: boolean;
   batchSelection: ReadonlySet<string>;
   onToggleBatch: (a: Address) => void;
   onSelectAllBatchable: () => void;
+  onAdd: (a: Address, label: string) => void;
   removeManual: (a: Address) => void;
   isDiscovering: boolean;
   logsFailed: boolean;
@@ -57,7 +59,7 @@ type Props = {
   refetch: () => void;
 };
 
-/** View B: one row per operator owned by the bond owner. Click a row to open its setup guide. */
+/** The nodes this bond owner funds, plus the row to add a new one. Click a row to open its guide. */
 export const FleetTable = ({
   operators,
   sources,
@@ -69,6 +71,7 @@ export const FleetTable = ({
   batchSelection,
   onToggleBatch,
   onSelectAllBatchable,
+  onAdd,
   removeManual,
   isDiscovering,
   logsFailed,
@@ -76,32 +79,43 @@ export const FleetTable = ({
   refetch,
 }: Props) => {
   const { owner, params: p } = useConsole();
+  const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
+  const [input, setInput] = useState("");
+  const [label, setLabel] = useState("");
+  const ens = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
+  const { data: ensAddr, isLoading } = useEnsAddress({
+    name: safeNormalize(ens),
+    chainId: 1,
+    query: { enabled: !!ens },
+  });
+  const resolved = toChecksum(input.trim()) ?? (ensAddr ? toChecksum(ensAddr) : null);
+  const isOwner = !!resolved && sameAddr(resolved, owner);
+  const invalid = (input.trim() !== "" && !resolved && !isLoading) || isOwner;
+
   const pills = Object.fromEntries(
     operators.map(op => [
       op.toLowerCase(),
       statusPill(statuses[op.toLowerCase()], owner, p?.requiredCiphernodeBond, p?.minTicketBalance),
     ]),
   );
-  const attention = operators.filter(op => needsAttention(pills[op.toLowerCase()])).length;
   const batchableCount = operators.filter(op => batchable(pills[op.toLowerCase()])).length;
 
+  const add = () => {
+    if (!resolved || isOwner) return;
+    onAdd(resolved, label.trim());
+    setInput("");
+    setLabel("");
+  };
+
   return (
-    <section className="if-guide" style={{ gap: 16 }}>
+    <section className="if-guide" style={{ gap: 12 }}>
       <header className="if-card__head" style={{ marginBottom: 0 }}>
         <div>
-          <div className="if-eyebrow">Operator positions</div>
-          <h2 className="if-section-title">Ciphernodes bonded by this wallet</h2>
+          <div className="if-eyebrow">Nodes</div>
+          <h2 className="if-section-title">Ciphernodes this bond owner funds</h2>
         </div>
         <div className="if-actions">
-          <span className="if-stat__sub">
-            {operators.length > 0 && (
-              <>
-                {operators.length} node{operators.length === 1 ? "" : "s"} · {attention} need
-                {attention === 1 ? "s" : ""} attention ·{" "}
-              </>
-            )}
-            {lastScan ? `last scan ${new Date(lastScan).toLocaleTimeString()}` : "not scanned yet"}
-          </span>
+          <span className="if-stat__sub">{lastScan ? `scanned ${new Date(lastScan).toLocaleTimeString()}` : ""}</span>
           {batchEnabled && batchableCount > 1 && (
             <button type="button" className="if-btn if-btn--ghost if-btn--sm" onClick={onSelectAllBatchable}>
               Select all ready ({batchableCount})
@@ -109,10 +123,10 @@ export const FleetTable = ({
           )}
           <button
             type="button"
-            className="if-btn if-btn--primary if-btn--sm"
+            className="if-btn if-btn--ghost if-btn--sm"
             onClick={() => refetch()}
             disabled={isDiscovering}
-            title="Re-reads BondOwnerSet events and the Safe transaction history for nodes that named this wallet as bond owner. Also runs automatically every 2 minutes."
+            title="Re-reads the chain for nodes that named this wallet as bond owner (also runs every 2 minutes)"
           >
             {isDiscovering ? <span className="if-spinner" /> : null}
             {isDiscovering ? "Scanning…" : "Scan for new nodes"}
@@ -122,9 +136,7 @@ export const FleetTable = ({
 
       {operators.length === 0 ? (
         <Empty>
-          {isDiscovering
-            ? "Scanning BondOwnerSet events and Safe history for operators…"
-            : "No operators found for this bond owner yet. Use “Onboard a new ciphernode” above to add one."}
+          {isDiscovering ? "Scanning the chain for nodes…" : "No nodes yet. Add a node's operator key below."}
         </Empty>
       ) : (
         <div className="if-table-wrap">
@@ -132,17 +144,13 @@ export const FleetTable = ({
             <thead>
               <tr>
                 {batchEnabled && (
-                  <th title="Tick nodes to propose their remaining steps as one Safe transaction">Batch</th>
+                  <th title="Tick nodes to batch their remaining steps into one Safe transaction">Batch</th>
                 )}
                 <th>Node</th>
                 <th>Status</th>
-                <th className="if-num">Bond (FOLD)</th>
-                <th>Registered</th>
+                <th className="if-num">Bond</th>
                 <th className="if-num">Tickets</th>
                 <th className="if-num">Hot wallet ETH</th>
-                <th className="if-num">Pending exit</th>
-                <th className="if-num">Claimable</th>
-                <th>Source</th>
               </tr>
             </thead>
             <tbody>
@@ -150,9 +158,8 @@ export const FleetTable = ({
                 const k = op.toLowerCase();
                 const s = statuses[k];
                 const pill = pills[k];
-                const src = sources[k] ?? [];
+                const manualOnly = (sources[k] ?? []).length === 1 && sources[k][0] === "manual";
                 const lowEth = s ? s.ethBalance < LOW_ETH : false;
-                const canBatch = batchable(pill);
                 return (
                   <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
                     {batchEnabled && (
@@ -161,16 +168,30 @@ export const FleetTable = ({
                           type="checkbox"
                           aria-label={`Include ${op} in batch`}
                           checked={batchSelection.has(k)}
-                          disabled={!canBatch}
-                          title={canBatch ? "Include in batch" : "Nothing the Safe can batch for this node right now"}
+                          disabled={!batchable(pill)}
                           onChange={() => onToggleBatch(op)}
                         />
                       </td>
                     )}
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                        {labels[k] && <span style={{ fontWeight: 540 }}>{labels[k]}</span>}
-                        <AddressLink address={op} />
+                        {labels[k] && <span style={{ fontWeight: 600 }}>{labels[k]}</span>}
+                        <span className="if-actions" style={{ gap: 6 }}>
+                          <AddressLink address={op} />
+                          {manualOnly && (
+                            <button
+                              type="button"
+                              className="if-btn if-btn--ghost if-btn--xs"
+                              title="Remove this manually added node from the list"
+                              onClick={e => {
+                                e.stopPropagation();
+                                removeManual(op);
+                              }}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
                       </div>
                     </td>
                     <td>
@@ -180,66 +201,63 @@ export const FleetTable = ({
                       {s ? fmtTokens(s.bond) : "-"}
                       {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
                     </td>
-                    <td>{s ? (s.isRegistered ? "Yes" : "No") : "-"}</td>
-                    <td className="if-num" title={s ? `${s.ticketBalance.toString()} wei balance` : undefined}>
-                      {s ? s.availableTickets.toString() : "-"}
-                    </td>
+                    <td className="if-num">{s ? s.availableTickets.toString() : "-"}</td>
                     <td
                       className="if-num"
                       style={lowEth ? { color: "var(--if-bad-ink)" } : undefined}
-                      title={
-                        lowEth
-                          ? "Below 0.01 ETH: the node pays gas for duties; an empty wallet silently misses them."
-                          : undefined
-                      }
+                      title={lowEth ? "Below 0.01 ETH: the node cannot pay for its duties" : undefined}
                     >
                       {s ? fmtEth(s.ethBalance) : "-"}
                       {lowEth && " ⚠"}
-                    </td>
-                    <td className="if-num">
-                      {s ? `${fmtTokens(s.pendingBondExit)} FOLD · ${fmtTokens(s.pendingTicketExit)} sUSDS` : "-"}
-                    </td>
-                    <td className="if-num">
-                      {s ? `${fmtTokens(s.claimableBond)} FOLD · ${fmtTokens(s.claimableTicket)} sUSDS` : "-"}
-                    </td>
-                    <td>
-                      <span style={{ color: "var(--if-ink-4)", fontSize: 11.5 }}>{src.join(" · ")}</span>
-                      {src.includes("manual") && src.length === 1 && (
-                        <button
-                          type="button"
-                          className="if-btn if-btn--ghost if-btn--xs"
-                          style={{ marginLeft: 8 }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            removeManual(op);
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <div className="if-table__foot">
-            <span>
-              Discovered from BondOwnerSet events and executed Safe transactions; manual entries and labels are stored
-              in this browser. A node you added by hand shows “Waiting for node” until its operator runs set-bond-owner.
-              {batchEnabled &&
-                "Tick “Batch” on ready nodes to propose all their remaining steps in one Safe transaction."}
-            </span>
-          </div>
         </div>
       )}
 
       {logsFailed && (
         <Note kind="warn">
-          The RPC refused the event scan, so only Safe history and manual entries are listed. Set{" "}
-          <code>NEXT_PUBLIC_ALCHEMY_API_KEY</code> in <code>.env.local</code> for full discovery.
+          The RPC refused the event scan, so only Safe history and manually added nodes are listed. Set{" "}
+          <code>NEXT_PUBLIC_ALCHEMY_API_KEY</code> for full discovery.
         </Note>
       )}
+
+      <div className="if-addrow">
+        <Field
+          label="Add a node (operator key or ENS)"
+          value={input}
+          onChange={setInput}
+          placeholder="0x…"
+          invalid={invalid}
+          hint={
+            isOwner
+              ? "That is the bond owner itself; the operator key is the node hot wallet."
+              : invalid
+                ? "Not a valid address."
+                : undefined
+          }
+        />
+        <Field
+          label="Label (optional)"
+          value={label}
+          onChange={setLabel}
+          placeholder="e.g. Alice / hetzner-1"
+          mono={false}
+        />
+        <div className="if-addrow__actions">
+          <button type="button" className="if-btn if-btn--primary" disabled={!resolved || isOwner} onClick={add}>
+            Add node
+          </button>
+          <CopyButton
+            text={operatorInstructions(owner, p, ownerEns ?? undefined)}
+            label="Copy instructions for a node operator"
+            className="if-btn--sm"
+          />
+        </div>
+      </div>
     </section>
   );
 };

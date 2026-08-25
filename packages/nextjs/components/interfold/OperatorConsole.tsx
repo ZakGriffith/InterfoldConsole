@@ -4,17 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
 import { FleetTable, batchable, needsAttention, statusPill } from "./FleetTable";
-import { NetworkPulse } from "./NetworkPulse";
-import { OnboardCard } from "./OnboardCard";
 import { OperatorWizard } from "./OperatorWizard";
-import { ParamsStrip } from "./ParamsStrip";
 import { Empty, Loader, Note } from "./ui";
 import { type Address } from "viem";
 import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useFleetStatus } from "~~/hooks/interfold/useFleetStatus";
 import { useOperatorList } from "~~/hooks/interfold/useOperatorList";
 import { planOnboarding } from "~~/utils/interfold/batch";
-import { REGISTRY, explorerAddress } from "~~/utils/interfold/contracts";
+import { REGISTRY } from "~~/utils/interfold/contracts";
 import { sameAddr } from "~~/utils/interfold/format";
 
 const Inner = () => {
@@ -42,70 +39,45 @@ const Inner = () => {
     .map(op => ({ operator: op, status: fleet.statuses[op.toLowerCase()], label: list.labels[op.toLowerCase()] }));
   const fleetPlan = planOnboarding(owner, batchNodes, params, funds);
 
-  // Drop selections when the owner changes or an operator disappears.
   useEffect(() => {
     if (selected && !list.operators.some(o => sameAddr(o, selected))) setSelected(undefined);
     setBatchSel(prev => new Set([...prev].filter(k => list.operators.some(o => o.toLowerCase() === k))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list.operators, owner]);
 
-  // Default to the first node that still needs something (a fully set-up node reads all "Complete",
-  // which is not what a fleet manager wants to land on); fall back to the first node.
+  // Land on the first node that still needs something.
   useEffect(() => {
     if (selected || list.operators.length === 0 || fleet.isLoading) return;
-    const pending = list.operators.find(op =>
-      needsAttention(
-        statusPill(fleet.statuses[op.toLowerCase()], owner, params?.requiredCiphernodeBond, params?.minTicketBalance),
-      ),
-    );
+    const pending = list.operators.find(op => needsAttention(pillOf(op)));
     setSelected(pending ?? list.operators[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list.operators, fleet.statuses, fleet.isLoading]);
 
-  const startOnboarding = (op: Address, label: string) => {
+  const addNode = (op: Address, label: string) => {
     list.addManual(op);
     if (label) list.setLabel(op, label);
     setSelected(op);
     setTimeout(() => wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
+  if (paramsError && !params)
+    return (
+      <main className="if-main">
+        <Empty>Cannot reach the bonding registry. Retrying.</Empty>
+      </main>
+    );
+  if (paramsLoading && !params)
+    return (
+      <main className="if-main">
+        <Loader label="Loading" sub={REGISTRY.address} />
+      </main>
+    );
+
   return (
-    <main className="if-main">
-      <div className="if-guide">
-        <header className="if-guide__head">
-          <div className="if-eyebrow">My nodes</div>
-          <h1 className="if-guide__title">Run ciphernodes on Interfold, funded from one Safe.</h1>
-          <p className="if-guide__lede">
-            Ciphernodes hold key shares for encrypted computations and are selected into committees by sortition. To
-            take part, a node needs a bonded ciphernode bond and a ticket balance. This console lets one bond owner,
-            such as a Gnosis Safe, post that collateral for many nodes run by different people, step by step, against
-            the live{" "}
-            <a className="if-link" href={explorerAddress(REGISTRY.address)} target="_blank" rel="noreferrer">
-              bonding registry
-            </a>
-            .
-          </p>
-        </header>
+    <main className="if-main" style={{ gap: 28 }}>
+      {connected && !onMainnet && <Note kind="warn">Switch the wallet to Ethereum mainnet; writes are disabled.</Note>}
 
-        {connected && !onMainnet && (
-          <Note kind="warn">
-            Interfold is deployed on Ethereum mainnet. Switch the wallet network to continue; writes are disabled.
-          </Note>
-        )}
-
-        {paramsError && !params ? (
-          <Empty>Couldn&apos;t reach the bonding registry. Retrying automatically…</Empty>
-        ) : paramsLoading && !params ? (
-          <Loader label="Loading bonding parameters" sub={REGISTRY.address} />
-        ) : (
-          <>
-            <NetworkPulse />
-            <ParamsStrip />
-            <BondOwnerCard />
-            <OnboardCard existing={list.operators} onStart={startOnboarding} />
-          </>
-        )}
-      </div>
+      <BondOwnerCard />
 
       <FleetTable
         operators={list.operators}
@@ -118,6 +90,7 @@ const Inner = () => {
         batchSelection={batchSel}
         onToggleBatch={toggleBatch}
         onSelectAllBatchable={selectAllBatchable}
+        onAdd={addNode}
         removeManual={list.removeManual}
         isDiscovering={list.isDiscovering}
         logsFailed={list.logsFailed}
@@ -127,9 +100,7 @@ const Inner = () => {
 
       {ownerIsContract && batchNodes.length > 0 && (
         <BatchPanel
-          eyebrow="Batch"
-          title={`One Safe transaction for ${batchNodes.length} node${batchNodes.length === 1 ? "" : "s"}`}
-          lede="Approvals are merged into one FOLD and one sUSDS approval sized for the whole batch; then every node is bonded, registered and ticketed in order. New nodes get the minimum ticket count (use a node's own guide to buy more). One signature round for all of it."
+          title={`Bond, register and ticket ${batchNodes.length} node${batchNodes.length === 1 ? "" : "s"} in one transaction`}
           plan={fleetPlan}
           batchName={`interfold-onboard-${batchNodes.length}-nodes`}
         />
@@ -145,7 +116,7 @@ const Inner = () => {
             onLabel={l => list.setLabel(selected, l)}
           />
         ) : (
-          <Empty>Select a node above, or onboard a new one, to open its setup guide.</Empty>
+          <Empty>Select a node above, or add one, to open its guide.</Empty>
         )}
       </div>
     </main>

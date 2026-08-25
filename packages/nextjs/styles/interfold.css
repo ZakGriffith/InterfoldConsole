@@ -1492,3 +1492,127 @@
 .if-wordmark__sub:hover {
   color: var(--if-accent-deep);
 }
+
+/* ---- simplified layout pieces ---- */
+.if-owner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 28px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  background: var(--if-paper-2);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+}
+.if-owner__who {
+  min-width: 0;
+}
+.if-owner__stats {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.if-owner__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.if-owner__value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--if-ink);
+  letter-spacing: -0.02em;
+}
+.if-owner__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--if-ink-4);
+}
+.if-addrow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: end;
+  padding: 14px 16px;
+  background: var(--if-paper-2);
+  border: 1px dashed var(--if-rule);
+  border-radius: var(--if-radius-lg);
+}
+.if-addrow .if-field {
+  max-width: none;
+}
+.if-addrow__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+.if-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.if-action__hint {
+  font-size: 12.5px;
+  color: var(--if-ink-3);
+}
+.if-action__hint--warn {
+  color: var(--if-warn-ink);
+}
+.if-actions--steps {
+  align-items: flex-start;
+  gap: 16px;
+}
+.if-inline-label {
+  max-width: 220px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.if-handoff {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--if-accent-soft);
+  border-radius: var(--if-radius-lg);
+  background: color-mix(in oklab, var(--if-accent-bg) 55%, var(--if-paper-2));
+}
+.if-handoff__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  flex-wrap: wrap;
+}
+.if-handoff__text {
+  font-size: 13.5px;
+  color: var(--if-ink-2);
+  max-width: 520px;
+  line-height: 1.5;
+}
+.if-handoff__text b {
+  color: var(--if-ink);
+}
+.if-handoff .if-disclosure {
+  background: transparent;
+}
+.if-handoff .if-disclosure__toggle {
+  font-size: 14px;
+  padding: 10px 14px;
+}
+.if-handoff .if-disclosure__body {
+  padding: 0 14px 6px;
+}
+@media (max-width: 880px) {
+  .if-addrow {
+    grid-template-columns: 1fr;
+  }
+  .if-owner__stats {
+    gap: 16px;
+  }
+}

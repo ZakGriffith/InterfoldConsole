@@ -1,21 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { AddressLink, Badge, Field, Note, Stat } from "./ui";
-import { isAddress } from "viem";
-import { useEnsAddress, useEnsName } from "wagmi";
+import { AddressLink, Badge, Field } from "./ui";
+import { useEnsAddress } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
-import { LINKS, safeQueue } from "~~/utils/interfold/contracts";
+import { safeQueue } from "~~/utils/interfold/contracts";
 import { fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 
-const SOURCE_LABEL = {
-  connected: "Connected wallet",
-  "operator-of-connected": "Bond owner of the connected hot wallet",
-  override: "Viewing as",
-} as const;
-
-/** View A: the bond owner (a Safe or a plain wallet), who it is, what it holds, what it can still fund. */
+/** One strip: who the bond owner is, what it holds, how many more nodes it can fund. */
 export const BondOwnerCard = () => {
   const {
     owner,
@@ -24,160 +17,105 @@ export const BondOwnerCard = () => {
     setOwnerOverride,
     connected,
     connMode,
-    isSafe,
     funds: f,
     params: p,
-    fundsLoading,
   } = useConsole();
+  const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
-  const ensName = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
-  const { data: ensAddr, isLoading: ensLoading } = useEnsAddress({
-    name: safeNormalize(ensName),
+  const ens = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
+  const { data: ensAddr, isLoading } = useEnsAddress({
+    name: safeNormalize(ens),
     chainId: 1,
-    query: { enabled: !!ensName },
+    query: { enabled: !!ens },
   });
-  const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
-
   const resolved = toChecksum(input.trim()) ?? (ensAddr ? toChecksum(ensAddr) : null);
-  const invalid = input.trim() !== "" && !resolved && !ensLoading;
+  const invalid = input.trim() !== "" && !resolved && !isLoading;
 
-  const nodesCapacity = f && p && p.requiredCiphernodeBond > 0n ? f.foldBalance / p.requiredCiphernodeBond : undefined;
-  const ticketsCapacity = f && p && p.ticketPrice > 0n ? f.susdsBalance / p.ticketPrice : undefined;
+  const nodes = f && p && p.requiredCiphernodeBond > 0n ? f.foldBalance / p.requiredCiphernodeBond : undefined;
   const usds = f ? susdsToUsds(f.susdsBalance, f.susdsRate) : undefined;
+  const isConnectedOwner = sameAddr(connected, owner);
+  const conn =
+    connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "Safe via WalletConnect" : "plain wallet";
 
   return (
-    <section className="if-card">
-      <header className="if-card__head">
-        <div>
-          <div className="if-eyebrow">Bond owner (the funding wallet)</div>
-          <div className="if-actions" style={{ gap: 10 }}>
-            <AddressLink address={owner} full />
-            {ownerEns && (
-              <span className="if-mono" style={{ fontSize: 13, color: "var(--if-ink-3)" }}>
-                {ownerEns}
-              </span>
-            )}
-            <Badge kind={ownerSource === "override" ? "muted" : "working"}>{SOURCE_LABEL[ownerSource]}</Badge>
-            {connected && sameAddr(connected, owner) && (
-              <Badge kind={isSafe ? "open" : "muted"}>
-                {connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "Safe via WalletConnect" : "EOA"}
-              </Badge>
-            )}
-          </div>
-        </div>
-        <div className="if-actions">
-          {ownerIsContract && (
-            <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
-              Safe queue <span className="if-btn__arrow">→</span>
-            </a>
+    <section className="if-owner">
+      <div className="if-owner__who">
+        <span className="if-eyebrow" style={{ marginBottom: 4 }}>
+          Bond owner
+        </span>
+        <div className="if-actions" style={{ gap: 8 }}>
+          <AddressLink address={owner} />
+          {isConnectedOwner ? (
+            <Badge kind={ownerIsContract ? "open" : "muted"}>connected · {conn}</Badge>
+          ) : (
+            <Badge kind="muted">{ownerSource === "override" ? "viewing" : "owner of the connected node"}</Badge>
           )}
-          <a className="if-btn if-btn--ghost if-btn--sm" href={LINKS.dashboard} target="_blank" rel="noreferrer">
-            Official dashboard <span className="if-btn__arrow">→</span>
-          </a>
+          <button type="button" className="if-btn if-btn--ghost if-btn--xs" onClick={() => setEditing(v => !v)}>
+            {editing ? "Cancel" : "View another"}
+          </button>
+          {ownerSource === "override" && (
+            <button
+              type="button"
+              className="if-btn if-btn--ghost if-btn--xs"
+              onClick={() => setOwnerOverride(undefined)}
+            >
+              Back to my wallet
+            </button>
+          )}
         </div>
-      </header>
-
-      <div className="if-stats if-stats--6 if-stats--flat" style={{ marginBottom: 22 }}>
-        <Stat
-          label="FOLD balance"
-          value={fmtTokens(f?.foldBalance)}
-          sub={
-            f
-              ? `${fmtTokens(f.foldTransferable)} transferable · ${fmtTokens(f.foldLocked)} locked`
-              : fundsLoading
-                ? "loading…"
-                : undefined
-          }
-          title={f ? `${f.foldBalance.toString()} wei` : undefined}
-        />
-        <Stat label="Bonded" value={fmtTokens(f?.totalBonded)} sub="FOLD across all operators" />
-        <Stat
-          label="Nodes you can bond"
-          value={nodesCapacity === undefined ? "-" : nodesCapacity.toString()}
-          sub="locked FOLD counts"
-        />
-        <Stat
-          label="sUSDS balance"
-          value={fmtTokens(f?.susdsBalance)}
-          sub={usds !== undefined ? `≈ ${fmtTokens(usds, "USDS")}` : undefined}
-          title={f ? `${f.susdsBalance.toString()} wei` : undefined}
-        />
-        <Stat
-          label="Tickets you can buy"
-          value={ticketsCapacity === undefined ? "-" : ticketsCapacity.toString()}
-          sub={p ? `${fmtTokens(p.ticketPrice, "sUSDS")} each` : undefined}
-        />
-        <Stat
-          label="Approvals"
-          value={
-            <span style={{ fontSize: 15 }}>
-              {fmtTokens(f?.foldAllowance)} <span className="if-stat__of">FOLD → registry</span>
-            </span>
-          }
-          sub={f ? `${fmtTokens(f.susdsAllowance)} sUSDS → ticket token` : undefined}
-        />
-      </div>
-
-      <div className="if-fields">
-        <Field
-          label="View another bond owner (address or ENS)"
-          value={input}
-          onChange={setInput}
-          placeholder="0x… or name.eth"
-          invalid={invalid}
-          hint={
-            invalid
-              ? "Not a valid address or ENS name."
-              : "Reads and simulations work for any address; sending requires connecting as it."
-          }
-          suffix={
-            <>
-              <button
-                type="button"
-                className="if-btn if-btn--sm if-btn--ghost"
-                disabled={!resolved}
-                onClick={() => resolved && setOwnerOverride(resolved)}
-              >
-                View
-              </button>
-              {ownerSource === "override" && (
+        {editing && (
+          <div style={{ marginTop: 10, maxWidth: 520 }}>
+            <Field
+              label="Bond owner to view (address or ENS)"
+              value={input}
+              onChange={setInput}
+              placeholder="0x… or name.eth"
+              invalid={invalid}
+              suffix={
                 <button
                   type="button"
-                  className="if-btn if-btn--sm if-btn--ghost"
+                  className="if-btn if-btn--sm if-btn--primary"
+                  disabled={!resolved}
                   onClick={() => {
-                    setOwnerOverride(undefined);
+                    if (!resolved) return;
+                    setOwnerOverride(resolved);
+                    setEditing(false);
                     setInput("");
                   }}
                 >
-                  Reset
+                  View
                 </button>
-              )}
-            </>
-          }
-        />
-        <div className="if-field">
-          <span className="if-field__label">Shortcuts</span>
-          <div className="if-actions">
-            {connected && isAddress(connected) && !sameAddr(connected, owner) && (
-              <button type="button" className="if-chip" onClick={() => setOwnerOverride(connected)}>
-                Use connected {connected.slice(0, 6)}…
-              </button>
-            )}
+              }
+            />
           </div>
-          <span className="if-field__hint">
-            The console never puts the bond owner in a call parameter; it is always the caller.
-          </span>
-        </div>
+        )}
       </div>
-
-      {f && p && f.foldTransferable < p.requiredCiphernodeBond && f.foldBalance >= p.requiredCiphernodeBond && (
-        <div style={{ marginTop: 16 }}>
-          <Note>
-            Most of this FOLD is under the airdrop lock, and that is fine: bonding credits the bond before pulling
-            tokens, so locked FOLD is bondable. Capacity above is computed from the full balance on purpose.
-          </Note>
+      <div className="if-owner__stats">
+        <div
+          className="if-owner__stat"
+          title={f ? `${fmtTokens(f.foldTransferable)} transferable; locked FOLD still counts for bonding` : undefined}
+        >
+          <span className="if-owner__value if-mono">{fmtTokens(f?.foldBalance)}</span>
+          <span className="if-owner__label">FOLD</span>
         </div>
-      )}
+        <div className="if-owner__stat" title={usds !== undefined ? `about ${fmtTokens(usds, "USDS")}` : undefined}>
+          <span className="if-owner__value if-mono">{fmtTokens(f?.susdsBalance)}</span>
+          <span className="if-owner__label">sUSDS</span>
+        </div>
+        <div className="if-owner__stat">
+          <span className="if-owner__value if-mono">{fmtTokens(f?.totalBonded)}</span>
+          <span className="if-owner__label">FOLD bonded</span>
+        </div>
+        <div className="if-owner__stat">
+          <span className="if-owner__value if-mono">{nodes === undefined ? "-" : nodes.toString()}</span>
+          <span className="if-owner__label">more nodes fundable</span>
+        </div>
+        {ownerIsContract && (
+          <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
+            Safe queue <span className="if-btn__arrow">→</span>
+          </a>
+        )}
+      </div>
     </section>
   );
 };

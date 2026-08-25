@@ -1,342 +1,161 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NetworkPulse } from "./NetworkPulse";
-import { OfflineNode } from "./OfflineNode";
+import { OfflineNode, YOUR_NODE_KEY } from "./OfflineNode";
 import { OperatorWizard } from "./OperatorWizard";
-import { ParamsStrip } from "./ParamsStrip";
-import { RequirementsNote } from "./RequirementsNote";
-import { AddressLink, Badge, CommandBlock, Empty, Field, Loader, Note } from "./ui";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { AddressLink, Badge, Field, Note } from "./ui";
 import { type Address } from "viem";
 import { useEnsAddress } from "wagmi";
 import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useOperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { useIsSafeAccount } from "~~/hooks/interfold/useIsSafeAccount";
 import { useOperatorList } from "~~/hooks/interfold/useOperatorList";
-import { REGISTRY, safeQueue } from "~~/utils/interfold/contracts";
-import { fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
+import { safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 
-const MODE_LABEL = { "safe-app": "Safe App", "safe-wc": "Safe via WalletConnect", eoa: "plain key", none: "" } as const;
+const MODE_LABEL = {
+  "safe-app": "Safe App",
+  "safe-wc": "Safe via WalletConnect",
+  eoa: "plain wallet",
+  none: "",
+} as const;
 
-const myNodeKey = (owner: Address) => `interfold.mynode.${owner.toLowerCase()}`;
-const readMyNode = (owner: Address): Address | undefined => {
-  try {
-    const v = localStorage.getItem(myNodeKey(owner));
-    return v ? (toChecksum(v) ?? undefined) : undefined;
-  } catch {
-    return undefined;
-  }
-};
-const writeMyNode = (owner: Address, op: Address | undefined) => {
-  try {
-    if (op) localStorage.setItem(myNodeKey(owner), op);
-    else localStorage.removeItem(myNodeKey(owner));
-  } catch {
-    /* in-memory only */
-  }
-};
-
-const Inner = () => {
-  const {
-    owner,
-    ownerSource,
-    ownerIsContract,
-    setOwnerOverride,
-    connected,
-    connMode,
-    isSafe,
-    onMainnet,
-    canWriteAsOwner,
-    operatorMode,
-    params,
-    paramsLoading,
-  } = useConsole();
-  const { openConnectModal } = useConnectModal();
+/** Wallet-driven guide for the node pasted above (or the connected hot wallet itself). */
+const Guide = () => {
+  const { owner, ownerSource, setOwnerOverride, connected, connMode, isSafe, canWriteAsOwner, operatorMode } =
+    useConsole();
   const list = useOperatorList(owner);
-
-  const [myNode, setMyNode] = useState<Address>();
+  const [node, setNode] = useState<Address>();
   const [input, setInput] = useState("");
-  const [label, setLabel] = useState("");
   const [ownerInput, setOwnerInput] = useState("");
   const [editingOwner, setEditingOwner] = useState(false);
-  const ownerEnsInput = ownerInput.trim().toLowerCase().endsWith(".eth") ? ownerInput.trim() : undefined;
-  const { data: ownerEnsAddr, isLoading: ownerEnsLoading } = useEnsAddress({
-    name: safeNormalize(ownerEnsInput),
-    chainId: 1,
-    query: { enabled: !!ownerEnsInput },
-  });
-  const ownerResolved = toChecksum(ownerInput.trim()) ?? (ownerEnsAddr ? toChecksum(ownerEnsAddr) : null);
-  const ownerInvalid = ownerInput.trim() !== "" && !ownerResolved && !ownerEnsLoading;
 
+  // The node is whatever was pasted above; a connected hot wallet is itself the node.
   useEffect(() => {
-    setMyNode(readMyNode(owner));
-  }, [owner]);
-
-  // A hot wallet connected in operator mode *is* the node: prefill it.
-  useEffect(() => {
-    if (!myNode && operatorMode && connected) setInput(connected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (operatorMode && connected) return setNode(connected);
+    try {
+      const v = localStorage.getItem(YOUR_NODE_KEY);
+      if (v) setNode(toChecksum(v) ?? undefined);
+    } catch {
+      /* ignore */
+    }
   }, [operatorMode, connected]);
+  useEffect(() => {
+    if (node) list.addManual(node);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node]);
 
-  const ensName = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
-  const { data: ensAddr, isLoading: ensLoading } = useEnsAddress({
-    name: safeNormalize(ensName),
-    chainId: 1,
-    query: { enabled: !!ensName },
-  });
+  const ens = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
+  const { data: ensAddr } = useEnsAddress({ name: safeNormalize(ens), chainId: 1, query: { enabled: !!ens } });
   const resolved = toChecksum(input.trim()) ?? (ensAddr ? toChecksum(ensAddr) : null);
-  const isOwner = !!resolved && sameAddr(resolved, owner);
-  const invalid = input.trim() !== "" && !resolved && !ensLoading;
-
-  const status = useOperatorStatus(myNode);
-
-  const start = () => {
-    if (!resolved || isOwner) return;
-    writeMyNode(owner, resolved);
-    setMyNode(resolved);
-    list.addManual(resolved);
-    if (label.trim()) list.setLabel(resolved, label);
-    setInput("");
-    setLabel("");
-  };
-  const clear = () => {
-    writeMyNode(owner, undefined);
-    setMyNode(undefined);
-  };
+  const oEns = ownerInput.trim().toLowerCase().endsWith(".eth") ? ownerInput.trim() : undefined;
+  const { data: oEnsAddr } = useEnsAddress({ name: safeNormalize(oEns), chainId: 1, query: { enabled: !!oEns } });
+  const ownerResolved = toChecksum(ownerInput.trim()) ?? (oEnsAddr ? toChecksum(oEnsAddr) : null);
+  const status = useOperatorStatus(node);
 
   return (
-    <main className="if-main">
-      <div className="if-guide">
-        <header className="if-guide__head">
-          <div className="if-eyebrow">Node operators</div>
-          <h1 className="if-guide__title">Connect your own node.</h1>
-          <p className="if-guide__lede">
-            You run a ciphernode; a bond owner posts its collateral. That owner can be your own wallet or a Safe you
-            sign for. Connect as the bond owner to bond, register and buy tickets. For a Safe, open this page as a Safe
-            App inside Safe{"{Wallet}"} (Apps → My custom apps → this URL) or pair through WalletConnect, and each
-            action becomes a proposal for the Safe&apos;s signers. Authorizing the bond owner is the one step your
-            node&apos;s own key signs.
-          </p>
-        </header>
-
-        <NetworkPulse />
-        {paramsLoading && !params ? (
-          <Loader label="Loading bonding parameters" sub={REGISTRY.address} />
-        ) : (
-          <ParamsStrip />
-        )}
-
-        {/* Who you are connected as */}
-        <section className="if-card">
-          <header className="if-card__head">
-            <div>
-              <div className="if-eyebrow">Connected as</div>
-              <div className="if-actions">
-                {connected ? (
-                  <AddressLink address={connected} full />
-                ) : (
-                  <span className="if-dl__muted">Not connected</span>
-                )}
-                {connected && (
-                  <Badge kind={canWriteAsOwner && isSafe ? "open" : operatorMode ? "working" : "muted"}>
-                    {canWriteAsOwner && isSafe
-                      ? `the Safe · ${MODE_LABEL[connMode]}`
-                      : operatorMode
-                        ? "a node hot wallet"
-                        : MODE_LABEL[connMode]}
-                  </Badge>
-                )}
-                {connected && !onMainnet && <Badge kind="bad">wrong network</Badge>}
-              </div>
-            </div>
+    <div className="if-main" style={{ paddingTop: 0, gap: 20 }}>
+      <section className="if-card">
+        <div className="if-actions" style={{ justifyContent: "space-between" }}>
+          <div className="if-actions">
+            <span className="if-eyebrow" style={{ margin: 0 }}>
+              Connected
+            </span>
+            {connected && <AddressLink address={connected} />}
+            {connected && (
+              <Badge kind={canWriteAsOwner && isSafe ? "open" : operatorMode ? "working" : "muted"}>
+                {canWriteAsOwner
+                  ? `bond owner · ${MODE_LABEL[connMode]}`
+                  : operatorMode
+                    ? "node hot wallet"
+                    : MODE_LABEL[connMode]}
+              </Badge>
+            )}
+          </div>
+          {connMode === "eoa" && ownerSource !== "operator-of-connected" && (
             <div className="if-actions">
-              {!connected && (
+              <span className="if-stat__sub">
+                Bond owner: <AddressLink address={owner} />
+              </span>
+              <button
+                type="button"
+                className="if-btn if-btn--ghost if-btn--xs"
+                onClick={() => setEditingOwner(v => !v)}
+              >
+                {editingOwner ? "Cancel" : "Change"}
+              </button>
+            </div>
+          )}
+        </div>
+        {editingOwner && (
+          <div style={{ marginTop: 10, maxWidth: 520 }}>
+            <Field
+              label="Bond owner (the wallet or Safe that funds this node)"
+              value={ownerInput}
+              onChange={setOwnerInput}
+              placeholder="0x… or name.eth"
+              suffix={
                 <button
                   type="button"
-                  className="if-btn if-btn--primary if-btn--sm"
-                  onClick={() => openConnectModal?.()}
+                  className="if-btn if-btn--sm if-btn--primary"
+                  disabled={!ownerResolved}
+                  onClick={() => {
+                    if (!ownerResolved) return;
+                    setOwnerOverride(sameAddr(ownerResolved, connected) ? undefined : ownerResolved);
+                    setOwnerInput("");
+                    setEditingOwner(false);
+                  }}
                 >
-                  Connect
+                  Use
                 </button>
-              )}
-              {ownerIsContract && (
-                <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
-                  Safe queue <span className="if-btn__arrow">→</span>
-                </a>
-              )}
-            </div>
-          </header>
-          {canWriteAsOwner && isSafe && (
-            <Note kind="good">
-              Acting as the bond owner <AddressLink address={owner} />. Bond, register and ticket actions below are
-              proposed to this Safe for its signers to confirm.
-            </Note>
-          )}
-          {canWriteAsOwner && !isSafe && (
-            <Note kind="good">
-              Acting as the bond owner <AddressLink address={owner} /> (a plain key). Transactions are sent directly
-              from this wallet.
-            </Note>
-          )}
-          {operatorMode && (
-            <Note>
-              This is a node&apos;s hot wallet, so only <code>setBondOwner</code> can be signed from here. For the
-              bonding steps, reconnect as the Safe (Safe App or WalletConnect).
-            </Note>
-          )}
-          {connMode === "eoa" && (
-            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div className="if-actions">
-                <span className="if-stat__sub">
-                  Bond owner for this guide: <AddressLink address={owner} />{" "}
-                  {ownerSource === "operator-of-connected"
-                    ? "(set on-chain by this node)"
-                    : ownerSource === "override"
-                      ? "(entered here)"
-                      : "(this wallet)"}
-                </span>
-                {ownerSource !== "operator-of-connected" && (
-                  <button
-                    type="button"
-                    className="if-btn if-btn--ghost if-btn--xs"
-                    onClick={() => setEditingOwner(e => !e)}
-                  >
-                    {editingOwner ? "Cancel" : "Change"}
-                  </button>
-                )}
-              </div>
-              {editingOwner && (
-                <div className="if-fields">
-                  <Field
-                    label="Bond owner (the wallet or Safe that funds this node)"
-                    value={ownerInput}
-                    onChange={setOwnerInput}
-                    placeholder="0x… or name.eth"
-                    invalid={ownerInvalid}
-                    hint={
-                      ownerInvalid ? "Not a valid address or ENS name." : "Remembered in this browser for this wallet."
-                    }
-                    suffix={
-                      <button
-                        type="button"
-                        className="if-btn if-btn--sm if-btn--primary"
-                        disabled={!ownerResolved}
-                        onClick={() => {
-                          if (!ownerResolved) return;
-                          setOwnerOverride(sameAddr(ownerResolved, connected) ? undefined : ownerResolved);
-                          setOwnerInput("");
-                          setEditingOwner(false);
-                        }}
-                      >
-                        Use
-                      </button>
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          {connected && !isSafe && !operatorMode && !canWriteAsOwner && (
-            <Note kind="warn">
-              This wallet is neither the bond owner <AddressLink address={owner} /> nor a node&apos;s key. Connect as
-              the bond owner (as a Safe App or via WalletConnect for a Safe) to send the bonding steps.
-            </Note>
-          )}
-          {!connected && (
-            <Note>
-              Reads and simulations work without connecting. To send the transactions, connect as the bond owner.
-            </Note>
-          )}
-        </section>
-
-        {/* Your node */}
-        {!myNode ? (
-          <section className="if-card">
-            <div className="if-eyebrow">Your node</div>
-            <h2 className="if-card__title">Which operator key does your ciphernode sign with?</h2>
-            <p className="if-card__body">On the machine running the node, print its operator key:</p>
-            <CommandBlock command="interfold wallet get" />
-            <p className="if-card__body">
-              Keep that hot wallet funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it; the
-              bond owner posts those.
-            </p>
-            <div style={{ marginTop: 16 }}>
-              <RequirementsNote compact />
-            </div>
-            <div className="if-fields" style={{ marginTop: 18 }}>
-              <Field
-                label="Operator key (the ciphernode address)"
-                value={input}
-                onChange={setInput}
-                placeholder="0x…"
-                invalid={invalid || isOwner}
-                hint={
-                  isOwner
-                    ? "That is the bond owner itself; the operator key is your node's hot wallet."
-                    : invalid
-                      ? "Not a valid address."
-                      : operatorMode && connected && sameAddr(connected, resolved)
-                        ? "Prefilled from the connected hot wallet."
-                        : undefined
-                }
-              />
-              <Field
-                label="Label (optional: your name, machine)"
-                value={label}
-                onChange={setLabel}
-                placeholder="e.g. Zak / home linux box"
-                mono={false}
-                suffix={
-                  <button
-                    type="button"
-                    className="if-btn if-btn--sm if-btn--primary"
-                    disabled={!resolved || isOwner}
-                    onClick={start}
-                  >
-                    Start
-                  </button>
-                }
-              />
-            </div>
-            <p className="if-card__body if-card__body--muted">
-              Remembered in this browser only. The node also appears under My Nodes for every signer once its
-              authorization is on-chain.
-            </p>
-          </section>
-        ) : (
-          <>
-            <Note>
-              Your node: <AddressLink address={myNode} />{" "}
-              <button type="button" className="if-btn if-btn--ghost if-btn--xs" onClick={clear}>
-                Change
-              </button>{" "}
-              Each step needs {fmtTokens(params?.requiredCiphernodeBond, "FOLD")} bond and{" "}
-              {fmtTokens(params?.ticketPrice, "sUSDS")} per ticket from the bond owner.
-            </Note>
-            <OperatorWizard
-              operator={myNode}
-              status={status.data}
-              statusLoading={status.isLoading}
-              label={list.labels[myNode.toLowerCase()] ?? ""}
-              onLabel={l => list.setLabel(myNode, l)}
-              mode="self"
+              }
             />
-          </>
+          </div>
         )}
+        {operatorMode && (
+          <div style={{ marginTop: 10 }}>
+            <Note>
+              A node hot wallet can only sign the authorization step here. For bonding, reconnect as the bond owner.
+            </Note>
+          </div>
+        )}
+      </section>
 
-        {!myNode && !params && !paramsLoading && (
-          <Empty>Couldn&apos;t reach the bonding registry. Retrying automatically…</Empty>
-        )}
-      </div>
-    </main>
+      {!node ? (
+        <section className="if-card">
+          <Field
+            label="Which node? (operator key or ENS)"
+            value={input}
+            onChange={setInput}
+            placeholder="0x…"
+            suffix={
+              <button
+                type="button"
+                className="if-btn if-btn--sm if-btn--primary"
+                disabled={!resolved}
+                onClick={() => resolved && setNode(resolved)}
+              >
+                Open guide
+              </button>
+            }
+          />
+        </section>
+      ) : (
+        <OperatorWizard
+          operator={node}
+          status={status.data}
+          statusLoading={status.isLoading}
+          label={list.labels[node.toLowerCase()] ?? ""}
+          onLabel={l => list.setLabel(node, l)}
+          mode="self"
+        />
+      )}
+    </div>
   );
 };
 
 /**
- * "Your node": the paste-and-export flow always comes first and needs no wallet. When a wallet is
- * connected, the guided flow (send / propose from that wallet) is offered underneath; it opens by
- * itself for a Safe, since that is who ends up signing.
+ * "Your node": the paste-and-export flow always comes first and needs no wallet. With a wallet
+ * connected, the guided flow (send / propose from it) is offered underneath and opens by itself for a Safe.
  */
 export const MyNode = () => {
   const { address, isSafe } = useIsSafeAccount();
@@ -349,11 +168,9 @@ export const MyNode = () => {
     <>
       <OfflineNode connected={address} guideOpen={!!address && guideOpen} onOpenGuide={() => setGuideOpen(true)} />
       {address && guideOpen && (
-        <div id="guided-flow">
-          <ConsoleProvider>
-            <Inner />
-          </ConsoleProvider>
-        </div>
+        <ConsoleProvider>
+          <Guide />
+        </ConsoleProvider>
       )}
     </>
   );
