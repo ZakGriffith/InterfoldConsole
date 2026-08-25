@@ -12,6 +12,7 @@ import { type Address } from "viem";
 import { useEnsAddress } from "wagmi";
 import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useOperatorStatus } from "~~/hooks/interfold/useFleetStatus";
+import { useIsSafeAccount } from "~~/hooks/interfold/useIsSafeAccount";
 import { useOperatorList } from "~~/hooks/interfold/useOperatorList";
 import { REGISTRY, safeQueue } from "~~/utils/interfold/contracts";
 import { fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
@@ -332,8 +333,28 @@ const Inner = () => {
   );
 };
 
-export const MyNode = () => (
-  <ConsoleProvider gate={<OfflineNode />}>
-    <Inner />
-  </ConsoleProvider>
-);
+/**
+ * "Your node": the paste-and-export flow always comes first and needs no wallet. When a wallet is
+ * connected, the guided flow (send / propose from that wallet) is offered underneath; it opens by
+ * itself for a Safe, since that is who ends up signing.
+ */
+export const MyNode = () => {
+  const { address, isSafe } = useIsSafeAccount();
+  const [guideOpen, setGuideOpen] = useState(false);
+  useEffect(() => {
+    if (!address) setGuideOpen(false);
+    else if (isSafe) setGuideOpen(true);
+  }, [address, isSafe]);
+  return (
+    <>
+      <OfflineNode connected={address} guideOpen={!!address && guideOpen} onOpenGuide={() => setGuideOpen(true)} />
+      {address && guideOpen && (
+        <div id="guided-flow">
+          <ConsoleProvider>
+            <Inner />
+          </ConsoleProvider>
+        </div>
+      )}
+    </>
+  );
+};

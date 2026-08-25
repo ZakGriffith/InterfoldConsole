@@ -35,7 +35,14 @@ const useAddressInput = (initial = "") => {
  * "Your node" with no wallet connected: paste the operator key, read its on-chain state, and get the
  * Safe Transaction Builder file for whoever funds it. Nothing here needs a signature.
  */
-export const OfflineNode = () => {
+type Props = {
+  /** Connected wallet, if any. The paste-and-export flow works either way. */
+  connected?: Address;
+  guideOpen?: boolean;
+  onOpenGuide?: () => void;
+};
+
+export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
   const { openConnectModal } = useConnectModal();
   const op = useAddressInput();
   const ownerIn = useAddressInput();
@@ -230,17 +237,41 @@ export const OfflineNode = () => {
         )}
 
         <section className="if-card">
+          {" "}
           <div className="if-eyebrow">Or do it here</div>
-          <h3 className="if-card__title">Connect a wallet to send the steps yourself.</h3>
+          <h3 className="if-card__title">
+            {connected ? "Send the steps from the connected wallet." : "Connect a wallet to send the steps yourself."}
+          </h3>
           <p className="if-card__body">
-            Connect as the bond owner (a plain wallet, or a Safe via Safe App / WalletConnect) to propose or send bond,
-            register and tickets directly from this page, or connect the node&apos;s hot wallet to sign{" "}
-            <code>setBondOwner</code>.
+            {connected ? (
+              <>
+                <AddressLink address={connected} /> is connected. The guided flow below lets a bond owner (a plain
+                wallet, or a Safe via Safe App / WalletConnect) propose or send bond, register and tickets, and lets a
+                node&apos;s hot wallet sign <code>setBondOwner</code>.
+              </>
+            ) : (
+              <>
+                Connect as the bond owner (a plain wallet, or a Safe via Safe App / WalletConnect) to propose or send
+                bond, register and tickets directly from this page, or connect the node&apos;s hot wallet to sign{" "}
+                <code>setBondOwner</code>.
+              </>
+            )}
           </p>
           <div className="if-card__links">
-            <button type="button" className="if-btn if-btn--primary" onClick={() => openConnectModal?.()}>
-              Connect wallet
-            </button>
+            {connected ? (
+              <button
+                type="button"
+                className="if-btn if-btn--primary"
+                onClick={() => onOpenGuide?.()}
+                disabled={guideOpen}
+              >
+                {guideOpen ? "Guided flow is open below" : "Open the guided flow"}
+              </button>
+            ) : (
+              <button type="button" className="if-btn if-btn--primary" onClick={() => openConnectModal?.()}>
+                Connect wallet
+              </button>
+            )}
             <a className="if-btn if-btn--ghost" href={LINKS.docs} target="_blank" rel="noreferrer">
               Operator docs <span className="if-btn__arrow">→</span>
             </a>
