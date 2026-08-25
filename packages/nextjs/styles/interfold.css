@@ -1488,3 +1488,7 @@
   border-top: 1px dashed var(--if-rule);
   padding-top: 8px;
 }
+
+.if-wordmark__sub:hover {
+  color: var(--if-accent-deep);
+}

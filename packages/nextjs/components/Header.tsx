@@ -18,8 +18,12 @@ export const menuLinks: HeaderMenuLink[] = [
 
 export const Wordmark = () => (
   <span className="if-wordmark">
-    <span className="if-wordmark__name">Ciphernode Console</span>
-    <span className="if-wordmark__sub">by BuidlGuidl</span>
+    <Link href="/" className="if-wordmark__name" aria-label="Ciphernode Console home">
+      Ciphernode Console
+    </Link>
+    <a className="if-wordmark__sub" href="https://buidlguidl.com" target="_blank" rel="noreferrer">
+      by BuidlGuidl
+    </a>
   </span>
 );
 
@@ -30,9 +34,7 @@ export const Header = () => {
   return (
     <header className="if-head">
       <div className="if-head__inner">
-        <Link href="/" aria-label="Ciphernode Console home">
-          <Wordmark />
-        </Link>
+        <Wordmark />
         <nav className="if-nav" aria-label="Primary">
           {menuLinks
             .map(l => ({ ...l, label: isConnected && l.connectedLabel ? l.connectedLabel : l.label }))
