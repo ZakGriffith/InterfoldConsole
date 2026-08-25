@@ -53,8 +53,8 @@ export const OnboardCard = ({ existing, onStart }: Props) => {
           <div className="if-eyebrow">Onboard a new ciphernode</div>
           <h2 className="if-card__title">Someone else runs the node; this {ownerWord} posts the collateral.</h2>
           <p className="if-card__body">
-            The node operator only has to authorize this bond owner from their operator key. Everything else — bonding{" "}
-            {fmtTokens(p?.requiredCiphernodeBond, "FOLD")}, registering, buying tickets — is sent from this {ownerWord}{" "}
+            The node operator only has to authorize this bond owner from their operator key. Everything else (bonding{" "}
+            {fmtTokens(p?.requiredCiphernodeBond, "FOLD")}, registering, buying tickets) is sent from this {ownerWord}{" "}
             in the guide below.
             {nodesCapacity !== undefined && (
               <>
@@ -87,7 +87,7 @@ export const OnboardCard = ({ existing, onStart }: Props) => {
               : invalid
                 ? "Not a valid address or ENS name."
                 : known
-                  ? "Already in the fleet — starting will just open its guide."
+                  ? "Already in the fleet; starting will just open its guide."
                   : "From `interfold wallet get` on their machine."
           }
         />
@@ -95,7 +95,7 @@ export const OnboardCard = ({ existing, onStart }: Props) => {
           label="Label (optional, stored in this browser)"
           value={label}
           onChange={setLabel}
-          placeholder="e.g. Alice — hetzner-1"
+          placeholder="e.g. Alice / hetzner-1"
           mono={false}
           suffix={
             <button

@@ -177,12 +177,12 @@ export const FleetTable = ({
                       <Badge kind={pill.kind}>{pill.label}</Badge>
                     </td>
                     <td className="if-num" title={s ? `${s.bond.toString()} wei` : undefined}>
-                      {s ? fmtTokens(s.bond) : "—"}
+                      {s ? fmtTokens(s.bond) : "-"}
                       {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
                     </td>
-                    <td>{s ? (s.isRegistered ? "Yes" : "No") : "—"}</td>
+                    <td>{s ? (s.isRegistered ? "Yes" : "No") : "-"}</td>
                     <td className="if-num" title={s ? `${s.ticketBalance.toString()} wei balance` : undefined}>
-                      {s ? s.availableTickets.toString() : "—"}
+                      {s ? s.availableTickets.toString() : "-"}
                     </td>
                     <td
                       className="if-num"
@@ -193,14 +193,14 @@ export const FleetTable = ({
                           : undefined
                       }
                     >
-                      {s ? fmtEth(s.ethBalance) : "—"}
+                      {s ? fmtEth(s.ethBalance) : "-"}
                       {lowEth && " ⚠"}
                     </td>
                     <td className="if-num">
-                      {s ? `${fmtTokens(s.pendingBondExit)} FOLD · ${fmtTokens(s.pendingTicketExit)} sUSDS` : "—"}
+                      {s ? `${fmtTokens(s.pendingBondExit)} FOLD · ${fmtTokens(s.pendingTicketExit)} sUSDS` : "-"}
                     </td>
                     <td className="if-num">
-                      {s ? `${fmtTokens(s.claimableBond)} FOLD · ${fmtTokens(s.claimableTicket)} sUSDS` : "—"}
+                      {s ? `${fmtTokens(s.claimableBond)} FOLD · ${fmtTokens(s.claimableTicket)} sUSDS` : "-"}
                     </td>
                     <td>
                       <span style={{ color: "var(--if-ink-4)", fontSize: 11.5 }}>{src.join(" · ")}</span>

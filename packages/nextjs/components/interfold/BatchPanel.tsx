@@ -134,7 +134,7 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
                           <span style={{ whiteSpace: "normal" }}>{r.error}</span>
                         )
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
                   </tr>
@@ -200,7 +200,7 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
         )}
         {b.status === "sim-fail" && <Note kind="bad">{b.error}</Note>}
         {b.status === "awaiting-wallet" && (
-          <Note>Waiting for Safe{"{Wallet}"} — confirm the batch there. It becomes one MultiSend proposal.</Note>
+          <Note>Waiting for Safe{"{Wallet}"}: confirm the batch there. It becomes one MultiSend proposal.</Note>
         )}
         {b.status === "proposed" && (
           <Note kind="good">
@@ -220,8 +220,8 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
           <div className="if-eyebrow">Hand-off</div>
           <h4 className="if-export__title">Export this batch as a file for Safe&apos;s Transaction Builder</h4>
           <p className="if-card__body">
-            The file describes exactly the {plan.calls.length} calls listed above — targets, function names, amounts, in
-            order — in the format Safe&apos;s <b>Transaction Builder</b> app imports. Whoever uploads it there gets the
+            The file describes exactly the {plan.calls.length} calls listed above (targets, function names, amounts, in
+            order) in the format Safe&apos;s <b>Transaction Builder</b> app imports. Whoever uploads it there gets the
             same bundle as one Safe transaction (one MultiSend, one signature round), without needing this console or a
             wallet connected here. Exporting sends nothing on-chain; the file only becomes a proposal when a Safe signer
             submits it in Safe{"{Wallet}"}. The file carries Safe&apos;s checksum, so a corrupted or edited copy is
@@ -242,7 +242,7 @@ export const BatchPanel = ({ eyebrow, title, lede, plan, batchName }: Props) => 
             </li>
             <li>
               Drag the file onto the <b>Upload a batch</b> area (or click it and pick the file). Transaction Builder
-              validates the checksum and lists every call with its decoded arguments — compare it with the table above.
+              validates the checksum and lists every call with its decoded arguments; compare it with the table above.
             </li>
             <li>
               Click <b>Create Batch</b>, then <b>Send Batch</b>, and sign. The bundle appears in the Safe queue for the

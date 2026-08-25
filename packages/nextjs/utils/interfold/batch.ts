@@ -68,6 +68,10 @@ export const planOnboarding = (
   nodes: PlanNode[],
   params: RegistryParams | undefined,
   funds: OwnerFunds | undefined,
+  opts?: {
+    /** Build the calls even if the node has not named this owner yet (offline export for a Safe that will). */
+    assumeAuthorized?: boolean;
+  },
 ): Plan => {
   const calls: BatchCall[] = [];
   const skipped: Plan["skipped"] = [];
@@ -84,7 +88,7 @@ export const planOnboarding = (
       skipped.push({ operator: n.operator, reason: "status not loaded yet" });
       continue;
     }
-    if (!sameAddr(s.bondOwner, owner)) {
+    if (!opts?.assumeAuthorized && !sameAddr(s.bondOwner, owner)) {
       skipped.push({
         operator: n.operator,
         reason:

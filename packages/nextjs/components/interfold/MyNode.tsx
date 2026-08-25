@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ConnectCta } from "./ConnectGate";
 import { NetworkPulse } from "./NetworkPulse";
+import { OfflineNode } from "./OfflineNode";
 import { OperatorWizard } from "./OperatorWizard";
 import { ParamsStrip } from "./ParamsStrip";
 import { RequirementsNote } from "./RequirementsNote";
@@ -112,7 +112,7 @@ const Inner = () => {
           <h1 className="if-guide__title">Connect your own node.</h1>
           <p className="if-guide__lede">
             You run a ciphernode; a bond owner posts its collateral. That owner can be your own wallet or a Safe you
-            sign for. Connect as the bond owner to bond, register and buy tickets — for a Safe, open this page as a Safe
+            sign for. Connect as the bond owner to bond, register and buy tickets. For a Safe, open this page as a Safe
             App inside Safe{"{Wallet}"} (Apps → My custom apps → this URL) or pair through WalletConnect, and each
             action becomes a proposal for the Safe&apos;s signers. Authorizing the bond owner is the one step your
             node&apos;s own key signs.
@@ -257,7 +257,7 @@ const Inner = () => {
             <p className="if-card__body">On the machine running the node, print its operator key:</p>
             <CommandBlock command="interfold wallet get" />
             <p className="if-card__body">
-              Keep that hot wallet funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it — the
+              Keep that hot wallet funded with a little ETH (≥ 0.01) for gas, and never hold FOLD or sUSDS on it; the
               bond owner posts those.
             </p>
             <div style={{ marginTop: 16 }}>
@@ -281,10 +281,10 @@ const Inner = () => {
                 }
               />
               <Field
-                label="Label (optional — your name, machine)"
+                label="Label (optional: your name, machine)"
                 value={label}
                 onChange={setLabel}
-                placeholder="e.g. Zak — home linux box"
+                placeholder="e.g. Zak / home linux box"
                 mono={false}
                 suffix={
                   <button
@@ -333,7 +333,7 @@ const Inner = () => {
 };
 
 export const MyNode = () => (
-  <ConsoleProvider gate={<ConnectCta />}>
+  <ConsoleProvider gate={<OfflineNode />}>
     <Inner />
   </ConsoleProvider>
 );

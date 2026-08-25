@@ -11,7 +11,7 @@ type HeaderMenuLink = { label: string; href: string; external?: boolean; connect
 /** The first tab is "Home" (landing + network stats) until a wallet connects, then "My Nodes" (the fleet). */
 export const menuLinks: HeaderMenuLink[] = [
   { label: "Home", connectedLabel: "My Nodes", href: "/" },
-  { label: "Connect your node", href: "/my-node" },
+  { label: "Your node", href: "/my-node" },
   { label: "Contracts", href: "/debug" },
   { label: "Docs", href: LINKS.docs, external: true },
 ];

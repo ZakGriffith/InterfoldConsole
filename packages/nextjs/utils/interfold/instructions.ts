@@ -13,7 +13,7 @@ export const operatorInstructions = (owner: Address, params: Params, ownerName?:
   const bond = params ? fmtTokens(params.requiredCiphernodeBond, "FOLD") : "the ciphernode bond";
   const ticket = params ? fmtTokens(params.ticketPrice, "sUSDS") : "the ticket price";
   return [
-    `Interfold ciphernode onboarding — bond owner: ${who}`,
+    `Interfold ciphernode onboarding for bond owner ${who}`,
     ``,
     `1. Run your ciphernode and note its operator key (the address the node signs with):`,
     `     interfold wallet get`,
@@ -23,7 +23,7 @@ export const operatorInstructions = (owner: Address, params: Params, ownerName?:
     `     interfold ciphernode set-bond-owner --owner ${owner}`,
     ``,
     `3. Send the bond owner your operator key address. They will then bond ${bond}, register the node, and buy`,
-    `   tickets (${ticket} each) from their wallet — nothing else is needed from you on-chain.`,
+    `   tickets (${ticket} each) from their wallet; nothing else is needed from you on-chain.`,
     ``,
     `4. Keep the node online. A registered node that misses duties is slashable; check with:`,
     `     interfold ciphernode status`,

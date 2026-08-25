@@ -21,19 +21,19 @@ export const NetworkPulse = () => {
         <span className="if-pulse__net">Ethereum mainnet</span>
       </div>
       <div className="if-pulse__grid">
-        <Tile value={n ? n.registered.toLocaleString() : "—"} label="ciphernodes registered" />
+        <Tile value={n ? n.registered.toLocaleString() : "-"} label="ciphernodes registered" />
         <Tile
-          value={n ? n.active.toLocaleString() : "—"}
+          value={n ? n.active.toLocaleString() : "-"}
           label="active now"
           title="Registered, fully bonded, ticketed and eligible for sortition"
         />
         <Tile
-          value={n ? fmtCompact(n.bonded) : "—"}
+          value={n ? fmtCompact(n.bonded) : "-"}
           label="FOLD bonded"
           title={n ? fmtTokens(n.bonded, "FOLD") : undefined}
         />
         <Tile
-          value={n ? n.tickets.toLocaleString() : "—"}
+          value={n ? n.tickets.toLocaleString() : "-"}
           label="tickets outstanding"
           title={n ? `${fmtTokens(n.ticketBalance, "sUSDS")} of ticket balance (tFOLD supply)` : undefined}
         />

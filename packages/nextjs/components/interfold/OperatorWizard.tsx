@@ -40,7 +40,7 @@ const MODE_LABEL = {
   "safe-app": "Safe App",
   "safe-wc": "Safe via WalletConnect",
   eoa: "EOA (plain key)",
-  none: "—",
+  none: "-",
 } as const;
 
 /**
@@ -208,7 +208,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
               label="Label (who runs this node; stored in this browser)"
               value={labelDraft}
               onChange={setLabelDraft}
-              placeholder="e.g. Alice — hetzner-1"
+              placeholder="e.g. Alice / hetzner-1"
               mono={false}
               suffix={
                 labelDraft !== label ? (
@@ -231,7 +231,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
                   <AddressLink address={s.bondOwner} />
                 )
               ) : (
-                "—"
+                "-"
               ),
             ],
             [
@@ -243,7 +243,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
             [
               "Tickets",
               <span key="t" className="if-mono">
-                {s ? s.availableTickets.toString() : "—"}{" "}
+                {s ? s.availableTickets.toString() : "-"}{" "}
                 <span className="if-stat__of">/ {minTickets.toString()} required</span>
               </span>,
             ],
@@ -284,17 +284,17 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
                 "Connected",
                 connected ? <AddressLink address={connected} /> : <span className="if-dl__muted">Not connected</span>,
               ],
-              ["Connection", connected ? <Badge kind={isSafe ? "open" : "muted"}>{MODE_LABEL[connMode]}</Badge> : "—"],
+              ["Connection", connected ? <Badge kind={isSafe ? "open" : "muted"}>{MODE_LABEL[connMode]}</Badge> : "-"],
               [
                 "Network",
                 connected ? (
                   onMainnet ? (
                     "Ethereum mainnet"
                   ) : (
-                    <span style={{ color: "var(--if-bad-ink)" }}>Wrong network — switch to Ethereum mainnet</span>
+                    <span style={{ color: "var(--if-bad-ink)" }}>Wrong network: switch to Ethereum mainnet</span>
                   )
                 ) : (
-                  "—"
+                  "-"
                 ),
               ],
               [
@@ -337,7 +337,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         <Step
           num={2}
           title="Authorize the bond owner"
-          lede="The operator key is the hot key your node runs with. The bond owner is the wallet that funds and controls its collateral — a plain wallet or a Safe. Authorization is sent by the operator key itself: it is how the node lets a wallet post collateral on its behalf."
+          lede="The operator key is the hot key your node runs with. The bond owner is the wallet that funds and controls its collateral: a plain wallet or a Safe. Authorization is sent by the operator key itself: it is how the node lets a wallet post collateral on its behalf."
           state={stateOf(0)}
         >
           <Dl
@@ -353,7 +353,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
                     <AddressLink address={s.bondOwner} />
                   )
                 ) : (
-                  "—"
+                  "-"
                 ),
               ],
               ...(s && s.pendingBondOwner !== zeroAddress
@@ -382,7 +382,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
                   <Note kind="warn">
                     Waiting for the node operator. They must run the command below on their node (it is sent by their
                     operator key and needs a little ETH for gas). This step advances by itself once that transaction
-                    lands — nothing can be bonded before it.
+                    lands; nothing can be bonded before it.
                   </Note>
                   <CommandBlock command={cli} />
                   <div className="if-actions">
@@ -503,7 +503,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
             </Note>
           )}
           {!ownerSet && (
-            <Note>Complete step 2 first — the registry only accepts collateral from an authorized bond owner.</Note>
+            <Note>Complete step 2 first: the registry only accepts collateral from an authorized bond owner.</Note>
           )}
           {!bondOk && (
             <>
@@ -540,8 +540,8 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         >
           <Dl
             items={[
-              ["Bonded for registration", bondOk ? "Yes" : "Not yet — bond the full ciphernode bond first"],
-              ["Registered", s ? (s.isRegistered ? "Yes" : "No") : "—"],
+              ["Bonded for registration", bondOk ? "Yes" : "Not yet: bond the full ciphernode bond first"],
+              ["Registered", s ? (s.isRegistered ? "Yes" : "No") : "-"],
             ]}
           />
           {s?.isBonded && !bondOk && p && (
@@ -592,7 +592,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
               [
                 "Tickets held",
                 <span key="h" className="if-mono">
-                  {s ? s.availableTickets.toString() : "—"}
+                  {s ? s.availableTickets.toString() : "-"}
                   {s && <span className="if-stat__of"> ({fmtTokens(s.ticketBalance, "sUSDS")} balance)</span>}
                 </span>,
               ],
@@ -670,7 +670,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         <p className="if-card__body">
           The on-chain position only makes the key eligible. The ciphernode software must be running with that same
           operator key so it can take part in key generation and decryption when sortition selects it. A registered node
-          that fails to participate is slashable — keep it online and keep its hot wallet funded with ETH.
+          that fails to participate is slashable, so keep it online and keep its hot wallet funded with ETH.
         </p>
         {allDone && s && !s.isActive && (
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>

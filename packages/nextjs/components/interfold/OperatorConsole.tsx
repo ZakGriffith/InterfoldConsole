@@ -77,8 +77,9 @@ const Inner = () => {
           <h1 className="if-guide__title">Run ciphernodes on Interfold, funded from one Safe.</h1>
           <p className="if-guide__lede">
             Ciphernodes hold key shares for encrypted computations and are selected into committees by sortition. To
-            take part, a node needs a bonded ciphernode bond and a ticket balance. This console lets one bond owner — a
-            Gnosis Safe — post that collateral for many nodes run by different people, step by step, against the live{" "}
+            take part, a node needs a bonded ciphernode bond and a ticket balance. This console lets one bond owner,
+            such as a Gnosis Safe, post that collateral for many nodes run by different people, step by step, against
+            the live{" "}
             <a className="if-link" href={explorerAddress(REGISTRY.address)} target="_blank" rel="noreferrer">
               bonding registry
             </a>

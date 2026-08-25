@@ -15,7 +15,7 @@ const SOURCE_LABEL = {
   override: "Viewing as",
 } as const;
 
-/** View A: the bond owner (a Safe or a plain wallet) — who it is, what it holds, what it can still fund. */
+/** View A: the bond owner (a Safe or a plain wallet), who it is, what it holds, what it can still fund. */
 export const BondOwnerCard = () => {
   const {
     owner,
@@ -93,7 +93,7 @@ export const BondOwnerCard = () => {
         <Stat label="Bonded" value={fmtTokens(f?.totalBonded)} sub="FOLD across all operators" />
         <Stat
           label="Nodes you can bond"
-          value={nodesCapacity === undefined ? "—" : nodesCapacity.toString()}
+          value={nodesCapacity === undefined ? "-" : nodesCapacity.toString()}
           sub="locked FOLD counts"
         />
         <Stat
@@ -104,7 +104,7 @@ export const BondOwnerCard = () => {
         />
         <Stat
           label="Tickets you can buy"
-          value={ticketsCapacity === undefined ? "—" : ticketsCapacity.toString()}
+          value={ticketsCapacity === undefined ? "-" : ticketsCapacity.toString()}
           sub={p ? `${fmtTokens(p.ticketPrice, "sUSDS")} each` : undefined}
         />
         <Stat

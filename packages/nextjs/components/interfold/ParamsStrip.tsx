@@ -28,7 +28,7 @@ export const ParamsStrip = () => {
         sub="ERC-4626 shares, not dollars"
         title={p ? `${p.ticketPrice.toString()} wei` : undefined}
       />
-      <Stat label="Min. tickets" value={p ? p.minTicketBalance.toString() : "—"} sub="to go active" />
+      <Stat label="Min. tickets" value={p ? p.minTicketBalance.toString() : "-"} sub="to go active" />
       <Stat
         label="Exit delay"
         value={fmtDuration(p?.exitDelay)}

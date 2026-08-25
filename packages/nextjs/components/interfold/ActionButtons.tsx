@@ -116,7 +116,7 @@ export const ActionButtons = ({
       )}
       {w.simWarning && (w.status === "awaiting-wallet" || w.status === "proposed" || w.status === "sent") && (
         <Note kind="warn">
-          Simulation reverted ({w.simWarning}) — expected while the prerequisite is still queued. Sent anyway.
+          Simulation reverted ({w.simWarning}). That is expected while the prerequisite is still queued. Sent anyway.
         </Note>
       )}
 

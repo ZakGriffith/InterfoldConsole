@@ -1,11 +1,13 @@
 "use client";
 
 import { AddressLink } from "./ui";
+import { type Address } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
-import { susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
+import { type OwnerFunds, susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
+import { type RegistryParams } from "~~/hooks/interfold/useRegistryParams";
 import { fmtTokens, maxBig } from "~~/utils/interfold/format";
 
-type Props = {
+type Amounts = {
   /** Exact amounts a specific batch will pull. Omit to show the per-node minimum instead. */
   foldNeeded?: bigint;
   susdsNeeded?: bigint;
@@ -24,11 +26,19 @@ const Row = ({ ok, children }: { ok: boolean | undefined; children: React.ReactN
 );
 
 /**
- * What the bond owner must hold for bonding/ticketing to succeed, checked live against its balances.
- * Locked (vesting) FOLD counts; the sUSDS must already be sUSDS shares, not plain USDS.
+ * What the bond owner must hold for bonding/ticketing to succeed, checked live against its balances
+ * when they are known. Locked (vesting) FOLD counts; the sUSDS must already be sUSDS shares, not USDS.
+ * Pure: takes owner/params/funds as props so it also works without the console context.
  */
-export const RequirementsNote = ({ foldNeeded, susdsNeeded, tickets, compact }: Props) => {
-  const { owner, params: p, funds: f } = useConsole();
+export const RequirementsList = ({
+  owner,
+  params: p,
+  funds: f,
+  foldNeeded,
+  susdsNeeded,
+  tickets,
+  compact,
+}: Amounts & { owner?: Address; params?: RegistryParams; funds?: OwnerFunds }) => {
   if (!p) return null;
   const minTickets = maxBig(1n, p.minTicketBalance);
   const fold = foldNeeded ?? p.requiredCiphernodeBond;
@@ -42,7 +52,8 @@ export const RequirementsNote = ({ foldNeeded, susdsNeeded, tickets, compact }: 
   return (
     <div className={`if-req ${compact ? "if-req--compact" : ""}`}>
       <div className="if-req__head">
-        What the bond owner <AddressLink address={owner} /> must hold{perNode ? " per node" : " for this batch"}
+        What the bond owner {owner ? <AddressLink address={owner} /> : null} must hold
+        {perNode ? " per node" : " for this batch"}
       </div>
       <ul className="if-req__list">
         <Row ok={foldOk}>
@@ -50,8 +61,8 @@ export const RequirementsNote = ({ foldNeeded, susdsNeeded, tickets, compact }: 
           {f && (
             <>
               {" "}
-              — holds {fmtTokens(f.foldBalance, "FOLD")}
-              {foldOk === false && <> (short by {fmtTokens(fold - f.foldBalance, "FOLD")})</>}
+              (holds {fmtTokens(f.foldBalance, "FOLD")}
+              {foldOk === false && <>; short by {fmtTokens(fold - f.foldBalance, "FOLD")}</>})
             </>
           )}
           . Locked or vesting FOLD counts: the registry credits the bond before it pulls the tokens.
@@ -62,12 +73,12 @@ export const RequirementsNote = ({ foldNeeded, susdsNeeded, tickets, compact }: 
           {f && (
             <>
               {" "}
-              — holds {fmtTokens(f.susdsBalance, "sUSDS")}
+              (holds {fmtTokens(f.susdsBalance, "sUSDS")}
               {f.susdsRate > 0n && <> ≈ {fmtTokens(susdsToUsds(f.susdsBalance, f.susdsRate), "USDS")}</>}
-              {susdsOk === false && <> (short by {fmtTokens(susds - f.susdsBalance, "sUSDS")})</>}
+              {susdsOk === false && <>; short by {fmtTokens(susds - f.susdsBalance, "sUSDS")}</>})
             </>
           )}
-          . This must be <b>sUSDS</b> — USDS deposited into Sky Savings (sky.money) — not plain USDS or DAI; a plain
+          . This must be <b>sUSDS</b> (USDS deposited into Sky Savings at sky.money), not plain USDS or DAI; a plain
           USDS balance does not count.
         </Row>
         <Row ok={undefined}>
@@ -83,4 +94,10 @@ export const RequirementsNote = ({ foldNeeded, susdsNeeded, tickets, compact }: 
       )}
     </div>
   );
+};
+
+/** Context-bound variant for pages inside the console. */
+export const RequirementsNote = (props: Amounts) => {
+  const { owner, params, funds } = useConsole();
+  return <RequirementsList owner={owner} params={params} funds={funds} {...props} />;
 };

@@ -63,14 +63,14 @@ export const ExitPanel = ({ operator, status: s }: Props) => {
       <div className="if-subsection">
         <Dl
           items={[
-            ["Exit in progress", s ? (s.exitInProgress ? "Yes" : "No") : "—"],
+            ["Exit in progress", s ? (s.exitInProgress ? "Yes" : "No") : "-"],
             [
               "Pending exit",
-              s ? `${fmtTokens(s.pendingBondExit, "FOLD")} · ${fmtTokens(s.pendingTicketExit, "sUSDS")}` : "—",
+              s ? `${fmtTokens(s.pendingBondExit, "FOLD")} · ${fmtTokens(s.pendingTicketExit, "sUSDS")}` : "-",
             ],
             [
               "Claimable now",
-              s ? `${fmtTokens(s.claimableBond, "FOLD")} · ${fmtTokens(s.claimableTicket, "sUSDS")}` : "—",
+              s ? `${fmtTokens(s.claimableBond, "FOLD")} · ${fmtTokens(s.claimableTicket, "sUSDS")}` : "-",
             ],
             ["Exit delay", fmtDuration(p?.exitDelay)],
           ]}

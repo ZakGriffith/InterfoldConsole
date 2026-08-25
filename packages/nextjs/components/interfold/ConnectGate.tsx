@@ -20,8 +20,8 @@ export const ConnectGate = () => {
           <div className="if-eyebrow">Ciphernode Console</div>
           <h1 className="if-guide__title">Connect a wallet to see its ciphernodes.</h1>
           <p className="if-guide__lede">
-            This console lets a bond owner — typically a Gnosis Safe — bond FOLD, register, buy sUSDS tickets, monitor
-            and exit Interfold ciphernodes, for as many nodes as it funds. Open it as a Safe App inside Safe
+            This console lets a bond owner, typically a Gnosis Safe, bond FOLD, register, buy sUSDS tickets, monitor and
+            exit Interfold ciphernodes, for as many nodes as it funds. Open it as a Safe App inside Safe
             {"{Wallet}"} (Apps → My custom apps → this URL) or pair through WalletConnect to act as the Safe. Connect a
             node&apos;s hot wallet instead to authorize a bond owner for that node.
           </p>
@@ -115,9 +115,9 @@ export const ConnectCta = () => {
         <div className="if-eyebrow">Node operators · connect your node</div>
         <h1 className="if-guide__title">Connect your wallet to set up your node.</h1>
         <p className="if-guide__lede">
-          Connect as the bond owner that funds your ciphernode — your own wallet, or a Safe (open this page as a Safe
-          App inside Safe{"{Wallet}"} or pair through WalletConnect) — or connect the node&apos;s own hot wallet to
-          authorize its bond owner. The guide appears as soon as a wallet is connected.
+          Connect as the bond owner that funds your ciphernode (your own wallet, or a Safe: open this page as a Safe App
+          inside Safe{"{Wallet}"} or pair through WalletConnect), or connect the node&apos;s own hot wallet to authorize
+          its bond owner. The guide appears as soon as a wallet is connected.
         </p>
         <div className="if-actions if-cta__actions">
           <button type="button" className="if-btn if-btn--primary" onClick={() => openConnectModal?.()}>
