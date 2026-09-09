@@ -2151,6 +2151,131 @@ const externalContracts = {
           stateMutability: "view",
         },
         {
+          name: "lockedBalanceAt",
+          type: "function",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "timestamp",
+              type: "uint64",
+              internalType: "uint64",
+            },
+          ],
+          outputs: [
+            {
+              name: "lockedBalance",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          name: "lockCount",
+          type: "function",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          name: "locks",
+          type: "function",
+          inputs: [
+            {
+              name: "account",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "policyId",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          name: "lockPolicyOf",
+          type: "function",
+          inputs: [
+            {
+              name: "policyId",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct InterfoldToken.LockPolicy",
+              components: [
+                {
+                  name: "holdUntil",
+                  type: "uint64",
+                  internalType: "uint64",
+                },
+                {
+                  name: "unlock",
+                  type: "tuple",
+                  internalType: "struct InterfoldToken.Curve",
+                  components: [
+                    {
+                      name: "anchor",
+                      type: "uint8",
+                      internalType: "enum InterfoldToken.Anchor",
+                    },
+                    {
+                      name: "start",
+                      type: "uint64",
+                      internalType: "uint64",
+                    },
+                    {
+                      name: "cliffDuration",
+                      type: "uint64",
+                      internalType: "uint64",
+                    },
+                    {
+                      name: "vestDuration",
+                      type: "uint64",
+                      internalType: "uint64",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
           name: "name",
           type: "function",
           inputs: [],

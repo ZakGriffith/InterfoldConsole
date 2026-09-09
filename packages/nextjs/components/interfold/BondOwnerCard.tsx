@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UnlockStrip } from "./UnlockStrip";
 import { AddressLink, Badge, Field } from "./ui";
 import { useEnsAddress } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
@@ -116,6 +117,7 @@ export const BondOwnerCard = () => {
           </a>
         )}
       </div>
+      <UnlockStrip owner={owner} />
     </section>
   );
 };
