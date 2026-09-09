@@ -1555,6 +1555,9 @@
   font-size: 12px;
   color: var(--if-ink-3);
 }
+.if-unlock__held {
+  color: var(--if-ink-2);
+}
 .if-unlock__side {
   color: var(--if-ink-3);
   margin-left: auto;
