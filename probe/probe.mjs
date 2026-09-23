@@ -141,7 +141,9 @@ const main = async () => {
   const node = await createLibp2p({
     transports: [quic()],
     services: {
-      identify: identify({ timeout: DIAL_TIMEOUT_MS }),
+      // The probe calls identify() itself on every connection; the automatic run would open a second
+      // stream and trip the one-outbound-stream limit ("Too many outbound protocol streams").
+      identify: identify({ timeout: DIAL_TIMEOUT_MS, runOnConnectionOpen: false }),
       dht: kadDHT({ protocol: KAD_PROTOCOL, clientMode: true }),
       // kad-dht declares ping as a required capability; without it createLibp2p throws before dialing anything.
       ping: ping(),
