@@ -57,7 +57,11 @@ jobs:
           git init -q
           git checkout -q --orphan probe-data
           cp "$GITHUB_WORKSPACE/probe-out/probe.json" probe.json
-          git add probe.json
+          # Vercel deploys every branch and reads vercel.json from the commit it deploys. This orphan
+          # branch has no app, so tell Vercel (at its configured root directory) to skip it.
+          mkdir -p packages/nextjs
+          echo '{ "git": { "deploymentEnabled": { "probe-data": false } } }' | tee vercel.json packages/nextjs/vercel.json > /dev/null
+          git add probe.json vercel.json packages/nextjs/vercel.json
           git -c user.name="probe-bot" -c user.email="probe-bot@users.noreply.github.com" \
             commit -qm "probe $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" probe-data
