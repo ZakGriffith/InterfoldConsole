@@ -6,6 +6,7 @@ import { type Address, parseEther } from "viem";
 import { useEnsAddress, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
+import { type ProbeNode, type ProbeReport, ago, useNodeProbe } from "~~/hooks/interfold/useNodeProbe";
 import { type OperatorSource } from "~~/hooks/interfold/useOperatorList";
 import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 import { operatorInstructions } from "~~/utils/interfold/instructions";
@@ -32,8 +33,42 @@ export const statusPill = (
   if (!s.isRegistered) return { label: "Needs registration", kind: "working" };
   if (minTickets !== undefined && (s.availableTickets < minTickets || s.availableTickets < 1n))
     return { label: "Needs tickets", kind: "working" };
-  if (s.isActive) return { label: "Active", kind: "published" };
+  if (s.isActive) return { label: "Eligible", kind: "published" };
   return { label: "Registered · inactive", kind: "open" };
+};
+
+/**
+ * What the probe saw when it last dialed this node's libp2p port. "Eligible" above is on-chain
+ * collateral only; this is the closest thing to "is the process up and on the right build".
+ */
+export const softwarePill = (
+  n: ProbeNode | undefined,
+  report: ProbeReport | undefined,
+  stale: boolean,
+): StatusPill & { sub?: string; title?: string } => {
+  if (!report) return { label: "no probe data", kind: "muted", title: "probe.json has not been published yet" };
+  if (!n || n.ok === null)
+    return {
+      label: "no peer ID",
+      kind: "muted",
+      title:
+        "Not monitored yet. The operator registers the node's peer ID on the Your node page (interfold net get-peer-id).",
+    };
+  if (stale)
+    return { label: "probe stale", kind: "warn", sub: ago(n.checkedAt), title: "The GitHub probe has stopped running" };
+  if (!n.ok) return { label: "no answer", kind: "bad", sub: ago(n.checkedAt), title: n.error };
+  const v = n.version ?? n.agentVersion ?? "unknown";
+  const behind = !!report.latestRelease && !!n.version && n.version !== report.latestRelease;
+  if (n.sameNetwork === false)
+    return { label: `${v} · wrong network`, kind: "bad", sub: ago(n.checkedAt), title: n.agentVersion ?? undefined };
+  if (behind)
+    return {
+      label: `${v} · upgrade to ${report.latestRelease}`,
+      kind: "warn",
+      sub: ago(n.checkedAt),
+      title: n.agentVersion ?? undefined,
+    };
+  return { label: v, kind: "published", sub: ago(n.checkedAt), title: n.agentVersion ?? undefined };
 };
 
 export const needsAttention = (pill: StatusPill) => pill.kind !== "published";
@@ -79,6 +114,7 @@ export const FleetTable = ({
   refetch,
 }: Props) => {
   const { owner, params: p } = useConsole();
+  const probe = useNodeProbe();
   const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
   const [input, setInput] = useState("");
   const [label, setLabel] = useState("");
@@ -147,7 +183,14 @@ export const FleetTable = ({
                   <th title="Tick nodes to batch their remaining steps into one Safe transaction">Batch</th>
                 )}
                 <th>Node</th>
-                <th>Status</th>
+                <th title="On-chain state from the bonding registry: bond, registration, tickets. Not liveness.">
+                  Status
+                </th>
+                {probe.report && (
+                  <th title="What the node answered on the peer network when the probe last found it (every 10 min)">
+                    Software
+                  </th>
+                )}
                 <th className="if-num">Bond</th>
                 <th className="if-num">Tickets</th>
                 <th className="if-num">Hot wallet ETH</th>
@@ -160,6 +203,7 @@ export const FleetTable = ({
                 const pill = pills[k];
                 const manualOnly = (sources[k] ?? []).length === 1 && sources[k][0] === "manual";
                 const lowEth = s ? s.ethBalance < LOW_ETH : false;
+                const sw = softwarePill(probe.byOperator[k], probe.report, probe.stale);
                 return (
                   <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
                     {batchEnabled && (
@@ -197,6 +241,14 @@ export const FleetTable = ({
                     <td>
                       <Badge kind={pill.kind}>{pill.label}</Badge>
                     </td>
+                    {probe.report && (
+                      <td title={sw.title}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <Badge kind={sw.kind}>{sw.label}</Badge>
+                          {sw.sub && <span className="if-stat__sub">{sw.sub}</span>}
+                        </div>
+                      </td>
+                    )}
                     <td className="if-num" title={s ? `${s.bond.toString()} wei` : undefined}>
                       {s ? fmtTokens(s.bond) : "-"}
                       {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
@@ -216,6 +268,23 @@ export const FleetTable = ({
             </tbody>
           </table>
         </div>
+      )}
+
+      {operators.length > 0 && (
+        <p className="if-stat__sub" style={{ margin: 0 }}>
+          {probe.report ? (
+            <>
+              Software column: every 10 minutes a probe looks each registered node up on the peer network and reads the
+              version it announces. &quot;No peer ID&quot; means the node is not registered yet; click the row for how.
+              Last probe {ago(probe.report.generatedAt)}
+              {probe.report.latestRelease ? `, latest release ${probe.report.latestRelease}` : ""}
+              {probe.report.bootstrap.ok === false
+                ? ". The probe could not reach the Interfold bootstrap peer, so treat results as unreliable."
+                : "."}
+              {probe.stale && " The probe has not run for a while; check the workflow on GitHub."}
+            </>
+          ) : null}
+        </p>
       )}
 
       {logsFailed && (

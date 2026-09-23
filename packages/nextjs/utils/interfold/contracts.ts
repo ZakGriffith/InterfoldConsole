@@ -21,6 +21,8 @@ export const LINKS = {
   site: "https://theinterfold.com/",
   blog: "https://blog.theinterfold.com/",
   safeApp: "https://app.safe.global",
+  /** This console's public URL, used in copied operator instructions. Forks set NEXT_PUBLIC_CONSOLE_URL. */
+  console: process.env.NEXT_PUBLIC_CONSOLE_URL ?? "https://interfold-console.vercel.app",
 } as const;
 
 export const explorerAddress = (a: string) => `${LINKS.explorer}/address/${a}`;

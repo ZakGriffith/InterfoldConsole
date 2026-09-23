@@ -4472,6 +4472,7 @@ __metadata:
     "@trivago/prettier-plugin-sort-imports": "npm:^6.0.2"
     "@types/node": "npm:^18.19.130"
     "@types/react": "npm:^19.2.14"
+    "@upstash/redis": "npm:^1.38.4"
     abitype: "npm:1.2.4"
     bgipfs: "npm:^0.0.18"
     blo: "npm:^2.0.0"
@@ -6284,6 +6285,15 @@ __metadata:
   version: 1.2.2
   resolution: "@unrs/rspack-resolver-binding-win32-x64-msvc@npm:1.2.2"
   conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@upstash/redis@npm:^1.38.4":
+  version: 1.38.4
+  resolution: "@upstash/redis@npm:1.38.4"
+  dependencies:
+    uncrypto: "npm:^0.1.3"
+  checksum: 10/145b24da3203e5b7dadfa970c09ab8f21844d920a371a164a4721a6247a8c3f33789d1b11eae4283fdb0d3921204f7670ecf548cd1e4216d91edf9cce99cc76b
   languageName: node
   linkType: hard
 

@@ -1,0 +1,65 @@
+name: Probe ciphernodes
+
+# Dials every node in probe/nodes.json over libp2p, records whether it answers and which
+# interfold-ciphernode version it reports, and publishes probe.json on the `probe-data`
+# branch (one commit, force-pushed, so the branch never grows). The console reads that file.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-ciphernodes
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: probe/package-lock.json
+
+      - name: Install probe
+        working-directory: probe
+        run: npm ci --no-audit --no-fund
+
+      - name: Dial nodes
+        id: dial
+        working-directory: probe
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Where the console publishes operator -> peer ID (repo variable; blank = the script default).
+          PEER_REGISTRY_URL: ${{ vars.PEER_REGISTRY_URL }}
+        run: node probe.mjs "$RUNNER_TEMP/probe.json"
+
+      - name: Publish probe.json to the probe-data branch
+        if: always() && hashFiles(format('{0}/probe.json', runner.temp)) != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          mkdir out && cd out
+          git init -q
+          git checkout -q --orphan probe-data
+          cp "$RUNNER_TEMP/probe.json" probe.json
+          git add probe.json
+          git -c user.name="probe-bot" -c user.email="probe-bot@users.noreply.github.com" \
+            commit -qm "probe $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" probe-data
+
+      - name: Fail if the bootstrap node did not answer
+        if: steps.dial.outcome == 'failure'
+        run: |
+          echo "::error::The probe could not reach the Interfold bootstrap peer, so results are unreliable."
+          exit 1

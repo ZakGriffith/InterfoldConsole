@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BatchExport } from "./BatchExport";
-import { statusPill } from "./FleetTable";
+import { softwarePill, statusPill } from "./FleetTable";
+import { PeerIdCard } from "./PeerIdCard";
 import { RequirementsList } from "./RequirementsNote";
 import { AddressLink, Badge, CommandBlock, Dl, Field, Note } from "./ui";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address, zeroAddress } from "viem";
 import { useEnsAddress } from "wagmi";
 import { useOperatorStatus } from "~~/hooks/interfold/useFleetStatus";
+import { useNodeProbe } from "~~/hooks/interfold/useNodeProbe";
 import { useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { useRegistryParams } from "~~/hooks/interfold/useRegistryParams";
 import { planOnboarding } from "~~/utils/interfold/batch";
@@ -88,6 +90,8 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
     : undefined;
   const cli = `interfold ciphernode set-bond-owner --owner ${owner ?? "<bond-owner-address>"}`;
   const lowEth = !!s && s.ethBalance < 10n ** 16n;
+  const probe = useNodeProbe();
+  const sw = operator ? softwarePill(probe.byOperator[operator.toLowerCase()], probe.report, probe.stale) : undefined;
 
   return (
     <main className="if-main" style={{ gap: 28 }}>
@@ -157,7 +161,18 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
                   {s ? s.availableTickets.toString() : "-"}
                 </span>,
               ],
-              ["Active", s ? (s.isActive ? "Yes" : "No") : "-"],
+              ["Eligible for sortition (on-chain)", s ? (s.isActive ? "Yes" : "No") : "-"],
+              [
+                "Software (probe)",
+                sw ? (
+                  <span key="sw" className="if-actions" style={{ gap: 6 }} title={sw.title}>
+                    <Badge kind={sw.kind}>{sw.label}</Badge>
+                    {sw.sub && <span className="if-stat__sub">{sw.sub}</span>}
+                  </span>
+                ) : (
+                  "-"
+                ),
+              ],
               [
                 "Hot wallet ETH",
                 <span key="e" className="if-mono" style={lowEth ? { color: "var(--if-bad-ink)" } : undefined}>
@@ -192,6 +207,8 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
           )}
         </section>
       )}
+
+      {operator && s && <PeerIdCard operator={operator} bondOwner={onChainOwner} />}
 
       {operator && s && params && (
         <>

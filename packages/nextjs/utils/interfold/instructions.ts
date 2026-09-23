@@ -28,6 +28,11 @@ export const operatorInstructions = (owner: Address, params: Params, ownerName?:
     `4. Keep the node online. A registered node that misses duties is slashable; check with:`,
     `     interfold ciphernode status`,
     ``,
+    `5. Optional, so the bond owner can see that your node is up and on the current release: print its peer ID`,
+    `     interfold net get-peer-id`,
+    `   and paste it under "Monitoring" on ${LINKS.console}/my-node (paste your operator key there first).`,
+    `   The peer ID is public information; nothing else runs on your node.`,
+    ``,
     `Docs: ${LINKS.docs}`,
     `Official dashboard (read-only with your operator key): ${LINKS.dashboard}`,
   ].join("\n");

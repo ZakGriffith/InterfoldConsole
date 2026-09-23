@@ -21,3 +21,7 @@ node_modules
 
 # cli
 dist
+
+# ciphernode probe (see probe/)
+probe/node_modules
+probe/probe.json

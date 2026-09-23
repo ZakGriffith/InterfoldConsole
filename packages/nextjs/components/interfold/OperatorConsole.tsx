@@ -5,6 +5,7 @@ import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
 import { FleetTable, batchable, needsAttention, statusPill } from "./FleetTable";
 import { OperatorWizard } from "./OperatorWizard";
+import { PeerIdCard } from "./PeerIdCard";
 import { Empty, Loader, Note } from "./ui";
 import { type Address } from "viem";
 import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
@@ -117,6 +118,11 @@ const Inner = () => {
           />
         ) : (
           <Empty>Select a node above, or add one, to open its guide.</Empty>
+        )}
+        {selected && (
+          <div style={{ marginTop: 20 }}>
+            <PeerIdCard operator={selected} bondOwner={owner} />
+          </div>
         )}
       </div>
     </main>

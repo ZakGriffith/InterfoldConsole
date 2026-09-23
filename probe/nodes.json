@@ -1,0 +1,4 @@
+{
+  "_comment": "Optional fixed targets. Normally nodes are found through the console's peer ID registry (PEER_REGISTRY_URL). Add an entry here with either a host (public IP or DNS name, dialed directly on port 9091) or a peerId (looked up in the DHT). Entries here override the registry for the same operator.",
+  "nodes": []
+}

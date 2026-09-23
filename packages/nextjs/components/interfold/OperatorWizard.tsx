@@ -190,7 +190,10 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         {allDone && s && (
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
             {s.isActive ? (
-              <Note kind="good">All set. This node is active and eligible for sortition.</Note>
+              <Note kind="good">
+                All set on-chain: this node is eligible for sortition. Whether the process is actually up and on the
+                current release is a separate check; see the Software column in the node list.
+              </Note>
             ) : (
               <>
                 <Note kind="warn">
