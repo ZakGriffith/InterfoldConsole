@@ -121,7 +121,7 @@ const Inner = () => {
         )}
         {selected && (
           <div style={{ marginTop: 20 }}>
-            <PeerIdCard operator={selected} bondOwner={owner} />
+            <PeerIdCard operator={selected} bondOwner={owner} label={list.labels[selected.toLowerCase()]} />
           </div>
         )}
       </div>

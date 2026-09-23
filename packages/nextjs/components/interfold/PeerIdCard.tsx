@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { softwarePill } from "./FleetTable";
-import { Badge, CommandBlock, Field, Note } from "./ui";
+import { AddressLink, Badge, CommandBlock, Field, Note } from "./ui";
 import { type Address } from "viem";
 import { useAccount, useSignMessage } from "wagmi";
 import { ago, useNodeProbe } from "~~/hooks/interfold/useNodeProbe";
@@ -10,14 +10,14 @@ import { type RegisterError, usePeerRegistry, useRegisterPeerId } from "~~/hooks
 import { sameAddr, shortAddr } from "~~/utils/interfold/format";
 import { PEER_ID_RE, shortPeerId, signMessageFor } from "~~/utils/interfold/peerIds";
 
-type Props = { operator: Address; bondOwner?: Address };
+type Props = { operator: Address; bondOwner?: Address; label?: string };
 
 /**
  * Optional monitoring opt-in. The operator pastes the node's libp2p peer ID once; the probe then
  * finds the node on the network by itself and the console can show "up, version x". Renders
  * nothing when this deployment has no registry store.
  */
-export const PeerIdCard = ({ operator, bondOwner }: Props) => {
+export const PeerIdCard = ({ operator, bondOwner, label }: Props) => {
   const reg = usePeerRegistry();
   const register = useRegisterPeerId();
   const probe = useNodeProbe();
@@ -73,6 +73,10 @@ export const PeerIdCard = ({ operator, bondOwner }: Props) => {
         <div>
           <div className="if-eyebrow">Monitoring (optional)</div>
           <h2 className="if-section-title">Let the console see whether this node is up</h2>
+          <div className="if-actions" style={{ marginTop: 4 }}>
+            {label && <b>{label}</b>}
+            <AddressLink address={operator} full />
+          </div>
         </div>
         <span className="if-actions" style={{ gap: 6 }} title={sw.title}>
           <Badge kind={sw.kind}>{sw.label}</Badge>
