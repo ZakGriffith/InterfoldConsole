@@ -14,6 +14,7 @@
     "@libp2p/identify": "^4.1.14",
     "@libp2p/kad-dht": "^16.4.5",
     "@libp2p/peer-id": "^6.0.15",
+    "@libp2p/ping": "^3.1.13",
     "@multiformats/multiaddr": "^13.0.1",
     "libp2p": "^3.3.11"
   }

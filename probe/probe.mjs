@@ -19,6 +19,7 @@ import { createLibp2p } from "libp2p";
 import { quic } from "@chainsafe/libp2p-quic";
 import { identify } from "@libp2p/identify";
 import { kadDHT } from "@libp2p/kad-dht";
+import { ping } from "@libp2p/ping";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr } from "@multiformats/multiaddr";
 
@@ -142,6 +143,8 @@ const main = async () => {
     services: {
       identify: identify({ timeout: DIAL_TIMEOUT_MS }),
       dht: kadDHT({ protocol: KAD_PROTOCOL, clientMode: true }),
+      // kad-dht declares ping as a required capability; without it createLibp2p throws before dialing anything.
+      ping: ping(),
     },
     nodeInfo: { name: "interfold-console-probe", version: "0.2.0", userAgent: "interfold-console-probe/0.2.0" },
     connectionGater: { denyDialMultiaddr: () => false },
