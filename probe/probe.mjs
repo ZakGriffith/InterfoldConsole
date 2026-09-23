@@ -170,9 +170,19 @@ const main = async () => {
     const started = Date.now();
     let conn;
     try {
-      conn = await node.dial(ma, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+      let warning;
+      try {
+        conn = await node.dial(ma, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+      } catch (e) {
+        // The dnsaddr record can lag behind a bootstrap key rotation ("Dialed peer X but connected to Y").
+        // The machine is still the right DHT seed, so dial the bare address and record what answered.
+        const m = /connected to (w+)/.exec(String(e?.message ?? e));
+        if (!m) throw e;
+        conn = await node.dial(ma.decapsulateCode(421), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+        warning = `dnsaddr advertises ${a.split("/p2p/")[1] ?? "?"} but the node answers as ${m[1]}`;
+      }
       const info = await node.services.identify.identify(conn, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
-      bootstrap = { operator: "bootstrap", via: "host", host: a, ok: true, rttMs: Date.now() - started, checkedAt: new Date().toISOString(), ...summarize(info) };
+      bootstrap = { operator: "bootstrap", via: "host", host: a, ok: true, rttMs: Date.now() - started, checkedAt: new Date().toISOString(), ...summarize(info), ...(warning && { warning }) };
       break; // keep the connection: the DHT walks from here
     } catch (e) {
       if (conn) await conn.close().catch(() => {});
