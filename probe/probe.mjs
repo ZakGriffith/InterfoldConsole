@@ -123,16 +123,20 @@ const probePeerId = async (node, target) => {
   const started = Date.now();
   const out = { operator: target.operator, via: "peer-id", peerId: target.peerId, checkedAt: new Date().toISOString() };
   let conn;
+  let stage = "lookup"; // which step failed, and what the DHT knew, so a "down" result says whether the node
+  let addrs; //           is unknown to the network or known but unreachable (NAT, firewall)
   try {
     const id = peerIdFromString(target.peerId);
     const found = await node.peerRouting.findPeer(id, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
-    const addrs = found.multiaddrs.map((a) => a.toString());
+    addrs = found.multiaddrs.map((a) => a.toString());
+    stage = "dial";
     const signal = AbortSignal.timeout(DIAL_TIMEOUT_MS);
     conn = await node.dial(id, { signal });
+    stage = "identify";
     const info = await node.services.identify.identify(conn, { signal });
     return { ...out, ok: true, rttMs: Date.now() - started, host: conn.remoteAddr.toString(), addrs, ...summarize(info) };
   } catch (e) {
-    return { ...out, ok: false, rttMs: Date.now() - started, error: String(e?.message ?? e).slice(0, 200) };
+    return { ...out, ok: false, rttMs: Date.now() - started, stage, addrs, error: String(e?.message ?? e).slice(0, 200) };
   } finally {
     if (conn) await conn.close().catch(() => {});
   }
