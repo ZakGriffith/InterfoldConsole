@@ -155,6 +155,9 @@ const main = async () => {
   });
   // Pass the node's supports_peer() check: matching network identity plus the protocols it expects.
   node.services.identify.host.protocolVersion = IDENTIFY_PROTOCOL;
+  // kad-dht pings each new contact over /ipfs/ping/1.0.0 before adding it, and the Interfold node does not
+  // speak that protocol, so nothing would ever enter the routing table. Trust contacts as they come.
+  node.services.dht.routingTable.kb.verify = async () => true;
   for (const p of ADVERTISED) await node.handle(p, ({ stream }) => stream.close());
   await node.start();
 
