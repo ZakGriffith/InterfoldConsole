@@ -21,6 +21,8 @@ export type ProbeNode = {
   /** identify protocol matched the mainnet network id + protocol version + deployment fingerprint */
   sameNetwork?: boolean;
   error?: string;
+  /** Which step failed on a peer-ID probe: the DHT lookup, the dial, or identify. */
+  stage?: "lookup" | "dial" | "identify";
 };
 
 export type ProbeReport = {

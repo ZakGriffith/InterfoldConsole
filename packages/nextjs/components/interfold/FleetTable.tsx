@@ -56,6 +56,21 @@ export const softwarePill = (
     };
   if (stale)
     return { label: "probe stale", kind: "warn", sub: ago(n.checkedAt), title: "The GitHub probe has stopped running" };
+  if (!n.ok && n.stage === "lookup")
+    return {
+      label: "not on network",
+      kind: "bad",
+      sub: ago(n.checkedAt),
+      title:
+        "No peer on the network has seen this peer ID. The node is not running, or the registered peer ID is wrong.",
+    };
+  if (!n.ok && n.stage === "dial")
+    return {
+      label: "unreachable",
+      kind: "bad",
+      sub: ago(n.checkedAt),
+      title: `The network knows this node, so it is running, but UDP 9091 cannot be reached from outside: forward the port on the router and allow it in the host firewall. Addresses on record: ${(n.addrs ?? []).join(", ") || "none"}`,
+    };
   if (!n.ok) return { label: "no answer", kind: "bad", sub: ago(n.checkedAt), title: n.error };
   const v = n.version ?? n.agentVersion ?? "unknown";
   const behind = !!report.latestRelease && !!n.version && n.version !== report.latestRelease;
