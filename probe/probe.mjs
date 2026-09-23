@@ -158,8 +158,6 @@ const main = async () => {
   // kad-dht pings each new contact over /ipfs/ping/1.0.0 before adding it, and the Interfold node does not
   // speak that protocol, so nothing would ever enter the routing table. Trust contacts as they come.
   node.services.dht.routingTable.kb.verify = async () => true;
-  node.addEventListener("peer:disconnect", (e) => console.error(`[diag] peer:disconnect ${e.detail}`));
-  node.addEventListener("connection:close", (e) => console.error(`[diag] connection:close ${e.detail.remotePeer} ${e.detail.remoteAddr}`));
   for (const p of ADVERTISED) await node.handle(p, ({ stream }) => stream.close());
   await node.start();
 
@@ -196,7 +194,6 @@ const main = async () => {
       // from the address we actually reached, so peer-ID lookups have somewhere to start.
       await node.peerStore.merge(conn.remotePeer, { multiaddrs: [conn.remoteAddr] });
       await node.services.dht.routingTable.add(conn.remotePeer).catch((e) => console.error("routing table add:", e?.message ?? e));
-      console.error(`[diag] routing table size after add: ${node.services.dht.routingTable.size}, conn status: ${conn.status}`);
       break; // keep the connection: the DHT walks from here
     } catch (e) {
       if (conn) await conn.close().catch(() => {});
@@ -206,10 +203,10 @@ const main = async () => {
   // Give the DHT a moment to learn that the bootstrap speaks its protocol.
   for (let i = 0; i < 50 && node.services.dht.routingTable.size === 0; i++) await new Promise((r) => setTimeout(r, 200));
 
-  console.error(`[diag] after wait: routing table size ${node.services.dht.routingTable.size}, open connections ${node.getConnections().length}`);
   const nodes = await Promise.all(
     [...targets.values()].map((t) => (t.host ? probeHost(node, t) : probePeerId(node, t))),
   );
+  const dhtPeers = node.services.dht.routingTable.size; // read before stop() empties the table
   await node.stop();
 
   const result = {
@@ -217,7 +214,7 @@ const main = async () => {
     latestRelease: latest,
     identifyProtocol: IDENTIFY_PROTOCOL,
     registry: Object.keys(registry).length,
-    dhtPeers: node.services.dht.routingTable.size,
+    dhtPeers,
     bootstrap,
     nodes,
   };
