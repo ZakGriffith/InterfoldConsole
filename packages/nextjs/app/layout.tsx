@@ -1,4 +1,4 @@
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@scaffold-ui/components/styles.css";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
@@ -7,11 +7,13 @@ import "~~/styles/globals.css";
 import "~~/styles/interfold.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", weight: ["400", "500", "600", "700"] });
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+// Self-hosted variable fonts (latin subset, from Google Fonts). next/font/google downloads at build
+// time and a failed fetch fails the whole Vercel build.
+const inter = localFont({ src: "./fonts/Inter-latin.woff2", variable: "--font-inter", weight: "400 700" });
+const jetbrainsMono = localFont({
+  src: "./fonts/JetBrainsMono-latin.woff2",
   variable: "--font-jetbrains-mono",
-  weight: ["400", "500", "600"],
+  weight: "400 600",
 });
 
 export const metadata = getMetadata({
