@@ -97,6 +97,7 @@ const summarize = (info) => {
     sameNetwork: info.protocolVersion === IDENTIFY_PROTOCOL,
     protocolVersion: info.protocolVersion ?? null,
     protocols: info.protocols ?? [],
+    listenAddrs: (info.listenAddrs ?? []).map(String),
   };
 };
 
@@ -186,6 +187,10 @@ const main = async () => {
       }
       const info = await node.services.identify.identify(conn, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
       bootstrap = { operator: "bootstrap", via: "host", host: a, ok: true, rttMs: Date.now() - started, checkedAt: new Date().toISOString(), ...summarize(info), ...(warning && { warning }) };
+      // kad-dht only adds a peer by itself when identify reports a public listen address; seed it by hand
+      // from the address we actually reached, so peer-ID lookups have somewhere to start.
+      await node.peerStore.merge(conn.remotePeer, { multiaddrs: [conn.remoteAddr] });
+      await node.services.dht.routingTable.add(conn.remotePeer).catch((e) => console.error("routing table add:", e?.message ?? e));
       break; // keep the connection: the DHT walks from here
     } catch (e) {
       if (conn) await conn.close().catch(() => {});
