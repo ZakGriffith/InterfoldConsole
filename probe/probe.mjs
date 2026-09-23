@@ -176,7 +176,7 @@ const main = async () => {
       } catch (e) {
         // The dnsaddr record can lag behind a bootstrap key rotation ("Dialed peer X but connected to Y").
         // The machine is still the right DHT seed, so dial the bare address and record what answered.
-        const m = /connected to (w+)/.exec(String(e?.message ?? e));
+        const m = /connected to ([A-Za-z0-9]+)/.exec(String(e?.message ?? e));
         if (!m) throw e;
         conn = await node.dial(ma.decapsulateCode(421), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
         warning = `dnsaddr advertises ${a.split("/p2p/")[1] ?? "?"} but the node answers as ${m[1]}`;
