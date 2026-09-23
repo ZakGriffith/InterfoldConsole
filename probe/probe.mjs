@@ -96,6 +96,7 @@ const summarize = (info) => {
     version: m ? m[1] : null,
     sameNetwork: info.protocolVersion === IDENTIFY_PROTOCOL,
     protocolVersion: info.protocolVersion ?? null,
+    protocols: info.protocols ?? [],
   };
 };
 
