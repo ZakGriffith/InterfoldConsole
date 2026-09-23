@@ -41,18 +41,22 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           # Where the console publishes operator -> peer ID (repo variable; blank = the script default).
           PEER_REGISTRY_URL: ${{ vars.PEER_REGISTRY_URL }}
-        run: node probe.mjs "$RUNNER_TEMP/probe.json"
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/probe-out"
+          node probe.mjs "$GITHUB_WORKSPACE/probe-out/probe.json"
 
       - name: Publish probe.json to the probe-data branch
-        if: always() && hashFiles(format('{0}/probe.json', runner.temp)) != ''
+        # hashFiles() only sees the workspace, so the output lives there and the shell checks for it.
+        if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -eu
+          [ -f "$GITHUB_WORKSPACE/probe-out/probe.json" ] || { echo "no probe.json produced, nothing to publish"; exit 0; }
           mkdir out && cd out
           git init -q
           git checkout -q --orphan probe-data
-          cp "$RUNNER_TEMP/probe.json" probe.json
+          cp "$GITHUB_WORKSPACE/probe-out/probe.json" probe.json
           git add probe.json
           git -c user.name="probe-bot" -c user.email="probe-bot@users.noreply.github.com" \
             commit -qm "probe $(date -u +%Y-%m-%dT%H:%M:%SZ)"
