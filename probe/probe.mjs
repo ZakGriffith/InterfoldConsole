@@ -164,7 +164,14 @@ const probePeerId = async (node, target) => {
       let lastErr = dialErr;
       for (const a of tried) {
         try {
-          conn = await node.dial(multiaddr(a), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+          // Dial the bare address: with /p2p/<id> on it, libp2p's dial queue would "join" the job that just
+          // timed out for this peer and hand back its abort instead of dialing. Verify who answered instead.
+          const c = await node.dial(multiaddr(a).decapsulateCode(421), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+          if (!c.remotePeer.equals(id)) {
+            await c.close().catch(() => {});
+            throw new Error(`${a.split("/p2p/")[0]} answered as ${c.remotePeer.toString()}, not this node`);
+          }
+          conn = c;
           fallback = a;
           break;
         } catch (e) {
