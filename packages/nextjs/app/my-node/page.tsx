@@ -3,7 +3,7 @@ import { MyNode } from "~~/components/interfold/MyNode";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Your node",
+  title: "Set up a node",
   description:
     "Node operators: connect your own Interfold ciphernode and set up its bond owner (your wallet or a Safe)",
 });

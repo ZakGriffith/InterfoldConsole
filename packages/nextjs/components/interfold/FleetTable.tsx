@@ -54,7 +54,7 @@ export const softwarePill = (
       label: "no peer ID",
       kind: "muted",
       title:
-        "Not monitored yet. The operator registers the node's peer ID on the Your node page (interfold net get-peer-id).",
+        "Not monitored yet. The operator registers the node's peer ID on the Set up a node page (interfold net get-peer-id).",
     };
   if (stale)
     return { label: "probe stale", kind: "warn", sub: ago(n.checkedAt), title: "The GitHub probe has stopped running" };

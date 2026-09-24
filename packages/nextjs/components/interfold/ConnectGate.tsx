@@ -22,7 +22,7 @@ export const ConnectGate = () => {
           <p className="if-guide__lede">
             Bond, register, buy tickets, monitor and exit Interfold ciphernodes from the wallet that funds them,
             typically a Safe: open this page as a Safe App inside Safe{"{Wallet}"} or pair through WalletConnect. To set
-            up your own node without connecting anything, use the Your node tab.
+            up your own node without connecting anything, use the Set up a node tab.
           </p>
         </header>
         <div className="if-actions">
@@ -95,32 +95,6 @@ export const OwnerPrompt = ({ connected, onPick }: { connected: Address; onPick:
           If this wallet <em>is</em> a bond owner that simply has not bonded anything yet, enter its own address to
           continue as it.
         </Note>
-      </div>
-    </main>
-  );
-};
-
-/** Centered call-to-action for the "Connect your node" tab before any wallet is connected. */
-export const ConnectCta = () => {
-  const { openConnectModal } = useConnectModal();
-  return (
-    <main className="if-main if-cta">
-      <div className="if-cta__box">
-        <div className="if-eyebrow">Node operators · connect your node</div>
-        <h1 className="if-guide__title">Connect your wallet to set up your node.</h1>
-        <p className="if-guide__lede">
-          Connect as the bond owner that funds your ciphernode (your own wallet, or a Safe: open this page as a Safe App
-          inside Safe{"{Wallet}"} or pair through WalletConnect), or connect the node&apos;s own hot wallet to authorize
-          its bond owner. The guide appears as soon as a wallet is connected.
-        </p>
-        <div className="if-actions if-cta__actions">
-          <button type="button" className="if-btn if-btn--primary" onClick={() => openConnectModal?.()}>
-            Connect wallet
-          </button>
-          <a className="if-btn if-btn--ghost" href={LINKS.docs} target="_blank" rel="noreferrer">
-            How ciphernodes work <span className="if-btn__arrow">→</span>
-          </a>
-        </div>
       </div>
     </main>
   );

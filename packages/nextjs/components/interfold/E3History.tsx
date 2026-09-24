@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment, useState } from "react";
 import { AddressLink, Badge, type BadgeKind, Disclosure, TxLink } from "./ui";
 import { type Address } from "viem";
 import {
@@ -71,6 +72,16 @@ export const E3History = ({ activity, paused, operators, labels }: Props) => {
   const live = e3s.length - complete - failed;
   const mine = (e3: E3) => operators.filter(op => e3.committee.some(c => sameAddr(c, op)));
   const nameOf = (op: string) => labels[op.toLowerCase()] ?? shortAddr(op);
+  const isOurs = (op: string) => operators.some(o => sameAddr(o, op));
+  // E3 ids whose full committee is unfolded under the row.
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setOpen(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const summary = [
     `${e3s.length} requested`,
@@ -110,46 +121,94 @@ export const E3History = ({ activity, paused, operators, labels }: Props) => {
               {e3s.map(e3 => {
                 const ours = mine(e3);
                 const took = e3.endedAt && e3.requestedAt ? e3.endedAt - e3.requestedAt : undefined;
+                const key = e3.id.toString();
                 return (
-                  <tr key={e3.id.toString()} style={{ cursor: "default" }}>
-                    <td>
-                      <span className="if-mono">#{e3.num}</span> <TxLink hash={e3.requestTx} />
-                    </td>
-                    <td title={e3.requestedAt ? fmtDate(e3.requestedAt) : undefined}>
-                      {when(e3.requestedAt, e3.requestBlock)}
-                    </td>
-                    <td className="if-num" title={e3.committee.map(shortAddr).join(", ")}>
-                      {e3.committee.length}
-                      {e3.candidates.length > 0 && (
-                        <span className="if-stat__of"> of {e3.committee.length + e3.candidates.length} drafted</span>
-                      )}
-                    </td>
-                    <td>
-                      {ours.length === 0 ? (
-                        <span className="if-stat__sub">none</span>
-                      ) : (
-                        <span className="if-actions" style={{ gap: 6, flexWrap: "wrap" }}>
-                          {ours.map(op => (
-                            <span key={op} title={op}>
-                              {labels[op.toLowerCase()] ? nameOf(op) : <AddressLink address={op} />}
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                        <Badge kind={outcomeKind(e3)}>{e3Outcome(e3)}</Badge>
-                        {e3.endBlock !== undefined && (
-                          <span className="if-stat__sub">
-                            {when(e3.endedAt, e3.endBlock)}
-                            {took !== undefined && `, ${Math.round(took / 60)} min after the request`}
-                            {e3.obligated.length > 0 && `, ${e3.obligated.length} bonds still obligated`}
+                  <Fragment key={key}>
+                    <tr style={{ cursor: "default" }}>
+                      <td>
+                        <span className="if-mono">#{e3.num}</span> <TxLink hash={e3.requestTx} />
+                      </td>
+                      <td title={e3.requestedAt ? fmtDate(e3.requestedAt) : undefined}>
+                        {when(e3.requestedAt, e3.requestBlock)}
+                      </td>
+                      <td className="if-num">
+                        <button
+                          type="button"
+                          className="if-btn if-btn--ghost if-btn--xs"
+                          onClick={() => toggle(e3.id.toString())}
+                          aria-expanded={open.has(e3.id.toString())}
+                          title={
+                            open.has(e3.id.toString()) ? "Hide the committee" : "List every node on this committee"
+                          }
+                        >
+                          {e3.committee.length} {open.has(e3.id.toString()) ? "▲" : "▼"}
+                        </button>
+                        {e3.candidates.length > 0 && (
+                          <span className="if-stat__of"> of {e3.committee.length + e3.candidates.length} drafted</span>
+                        )}
+                      </td>
+                      <td>
+                        {ours.length === 0 ? (
+                          <span className="if-stat__sub">none</span>
+                        ) : (
+                          <span className="if-actions" style={{ gap: 6, flexWrap: "wrap" }}>
+                            {ours.map(op => (
+                              <span key={op} title={op}>
+                                {labels[op.toLowerCase()] ? nameOf(op) : <AddressLink address={op} />}
+                              </span>
+                            ))}
                           </span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <Badge kind={outcomeKind(e3)}>{e3Outcome(e3)}</Badge>
+                          {e3.endBlock !== undefined && (
+                            <span className="if-stat__sub">
+                              {when(e3.endedAt, e3.endBlock)}
+                              {took !== undefined && `, ${Math.round(took / 60)} min after the request`}
+                              {e3.obligated.length > 0 && `, ${e3.obligated.length} bonds still obligated`}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {open.has(key) && (
+                      <tr style={{ cursor: "default" }}>
+                        <td colSpan={5} style={{ paddingTop: 4 }}>
+                          <div className="if-stat__sub" style={{ marginBottom: 6 }}>
+                            Committee of E3 #{e3.num}: {e3.committee.length} nodes
+                            {e3.obligated.length > 0 && `, ${e3.obligated.length} still obligated`}
+                            {ours.length > 0 && `, ${ours.length} yours (marked)`}
+                          </div>
+                          <div className="if-actions" style={{ gap: "6px 14px", flexWrap: "wrap" }}>
+                            {[...e3.committee]
+                              .sort((a, b) => Number(isOurs(b)) - Number(isOurs(a)))
+                              .map(op => (
+                                <span
+                                  key={op}
+                                  className="if-actions"
+                                  style={{ gap: 6, fontWeight: isOurs(op) ? 600 : undefined }}
+                                  title={e3.obligated.includes(op) ? "bond still obligated for this E3" : undefined}
+                                >
+                                  {isOurs(op) && labels[op.toLowerCase()] && <span>{nameOf(op)}</span>}
+                                  <AddressLink address={op} />
+                                  {isOurs(op) && <Badge kind="open">yours</Badge>}
+                                </span>
+                              ))}
+                          </div>
+                          {e3.candidates.length > 0 && (
+                            <div className="if-stat__sub" style={{ marginTop: 8 }}>
+                              Drafted but not kept by sortition:{" "}
+                              {e3.candidates
+                                .map(op => (isOurs(op) ? `${nameOf(op)} (yours)` : shortAddr(op)))
+                                .join(", ")}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>

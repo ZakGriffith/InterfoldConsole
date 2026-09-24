@@ -11,7 +11,7 @@ A dashboard for running [Interfold](https://theinterfold.com) ciphernodes when t
 - **Know whether each node is actually up, and on which version.** The Status pill is on-chain collateral only ("Eligible"). The Software column comes from a probe that dials each node's libp2p port every 10 minutes and reads the version the node announces; nothing runs on the node. See *Node liveness probe* below.
 - **Set a node up in four steps:** authorize the bond owner (sent by the node's own key), bond 32,000 FOLD, register, buy sUSDS tickets. Each step is simulated as the bond owner before it is sent, and Safe proposals are never awaited; the page follows the chain.
 - **One Safe transaction instead of five.** Approve, bond, register, approve and buy tickets are bundled into a single MultiSend proposal, for one node or several.
-- **Or export the bundle.** Download a Safe Transaction Builder file that any signer imports to create the same bundle. This works with no wallet connected: paste a node's operator key on the *Your node* tab and get the file.
+- **Or export the bundle.** Download a Safe Transaction Builder file that any signer imports to create the same bundle. This works with no wallet connected: paste a node's operator key on the *Set up a node* tab and get the file.
 - **Requirements checked live:** FOLD for the bond (locked or vesting FOLD counts), sUSDS per ticket (it must be sUSDS, not USDS) and ETH on the node's hot wallet.
 - **Later:** buy more tickets, unbond, remove tickets, deregister and claim exits.
 
@@ -32,7 +32,7 @@ Keep that hot wallet topped up with a little ETH (it pays gas for the node's dut
 
 Optional. Everything else works without it.
 
-A ciphernode answers the standard libp2p identify handshake to any peer that connects to it, and in that answer it announces `interfold-ciphernode/<version>`. The registry cannot tell you this, and nothing on-chain links an operator key to a machine, so the console asks each operator for one thing, once: the node's libp2p peer ID (`interfold net get-peer-id`, stable across IP changes, not secret). They paste it under *Monitoring* on the *Your node* page; the bond owner can also paste it from the node's guide. Changing an existing entry needs a signature from the operator key or the bond owner.
+A ciphernode answers the standard libp2p identify handshake to any peer that connects to it, and in that answer it announces `interfold-ciphernode/<version>`. The registry cannot tell you this, and nothing on-chain links an operator key to a machine, so the console asks each operator for one thing, once: the node's libp2p peer ID (`interfold net get-peer-id`, stable across IP changes, not secret). They paste it under *Monitoring* on the *Set up a node* page; the bond owner can also paste it from the node's guide. Changing an existing entry needs a signature from the operator key or the bond owner.
 
 `probe/probe.mjs` reads that registry, looks each peer ID up in the network's DHT, dials the node wherever it is now, and records whether it answered and which version it reported. `.github/workflows/probe.yaml` runs it every 10 minutes and publishes `probe.json` on the `probe-data` branch (one force-pushed commit, so the branch never grows). The console fetches that file and shows the result in the Software column and on each node's page.
 

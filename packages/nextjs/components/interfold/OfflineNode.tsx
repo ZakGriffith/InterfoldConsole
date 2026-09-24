@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { BatchExport } from "./BatchExport";
 import { softwarePill, statusPill } from "./FleetTable";
 import { PeerIdCard } from "./PeerIdCard";
 import { RequirementsList } from "./RequirementsNote";
 import { AddressLink, Badge, CommandBlock, Dl, Field, Note } from "./ui";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { type Address, zeroAddress } from "viem";
 import { useEnsAddress } from "wagmi";
 import { useOperatorStatus } from "~~/hooks/interfold/useFleetStatus";
@@ -31,18 +31,11 @@ const useAddressInput = (initial = "") => {
   return { input, setInput, resolved, invalid };
 };
 
-type Props = {
-  connected?: Address;
-  guideOpen?: boolean;
-  onOpenGuide?: () => void;
-};
-
 /**
- * "Your node": paste the operator key, see its on-chain state, get the Safe batch file. No wallet
- * needed. The wallet-driven guide is offered at the bottom.
+ * "Set up a node": paste the operator key, see its on-chain state, get the Safe batch file. No
+ * wallet needed. Whoever holds the bond owner wallet sends the steps from the Fleet page.
  */
-export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
-  const { openConnectModal } = useConnectModal();
+export const OfflineNode = () => {
   const op = useAddressInput();
   const ownerIn = useAddressInput();
   const [ticketsIn, setTicketsIn] = useState("1");
@@ -96,7 +89,7 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
   return (
     <main className="if-main" style={{ gap: 28 }}>
       <header className="if-guide__head">
-        <div className="if-eyebrow">Your node</div>
+        <div className="if-eyebrow">Set up a node</div>
         <h1 className="if-guide__title">Paste your operator key. Get the Safe batch file.</h1>
         <p className="if-guide__lede">
           No wallet needed. The console reads the node on-chain, works out what its bond owner still has to do, and
@@ -237,28 +230,12 @@ export const OfflineNode = ({ connected, guideOpen, onOpenGuide }: Props) => {
 
       <div className="if-actions" style={{ justifyContent: "space-between" }}>
         <span className="if-stat__sub">
-          {connected ? (
-            <>
-              <AddressLink address={connected} /> is connected. Send or propose the steps from it instead of exporting.
-            </>
-          ) : (
-            "Prefer to send the steps yourself? Connect as the bond owner, or as the node hot wallet to authorize it."
-          )}
+          Holding the bond owner wallet yourself, or the node&apos;s hot wallet? The Fleet page sends the steps directly
+          instead of exporting a file.
         </span>
-        {connected ? (
-          <button
-            type="button"
-            className="if-btn if-btn--ghost if-btn--sm"
-            onClick={() => onOpenGuide?.()}
-            disabled={guideOpen}
-          >
-            {guideOpen ? "Guided flow is open below" : "Open the guided flow"}
-          </button>
-        ) : (
-          <button type="button" className="if-btn if-btn--ghost if-btn--sm" onClick={() => openConnectModal?.()}>
-            Connect wallet
-          </button>
-        )}
+        <Link href="/" className="if-btn if-btn--ghost if-btn--sm">
+          Open Fleet
+        </Link>
       </div>
     </main>
   );
