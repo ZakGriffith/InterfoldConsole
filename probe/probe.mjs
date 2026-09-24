@@ -118,6 +118,30 @@ const probeHost = async (node, target) => {
   }
 };
 
+const PRIVATE_V4 = [/^10[.]/, /^172[.](1[6-9]|2[0-9]|3[01])[.]/, /^192[.]168[.]/, /^127[.]/, /^169[.]254[.]/, /^100[.](6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])[.]/, /^0[.]/];
+const isPublicV4 = (ip) => isIp(ip) && !PRIVATE_V4.some((re) => re.test(ip));
+const parseV4 = (addr) => {
+  const m = /^[/]ip4[/]([0-9.]+)[/]udp[/]([0-9]+)[/]quic-v1/.exec(addr);
+  return m ? { ip: m[1], port: Number(m[2]) } : null;
+};
+
+/**
+ * A node behind a home router that forwards its port but rewrites the source port of outgoing
+ * traffic is recorded in the DHT at public-ip:<random port> (what other peers observed), while the
+ * port that is actually open is the one it listens on. So when the DHT addresses fail, try every
+ * public IPv4 the DHT holds on every port the node's own listen addresses use (9091 by default).
+ */
+const fallbackAddrs = (addrs, peerId) => {
+  const parsed = addrs.map(parseV4).filter(Boolean);
+  const publicIps = [...new Set(parsed.filter((p) => isPublicV4(p.ip)).map((p) => p.ip))];
+  const ports = [...new Set(parsed.filter((p) => !isPublicV4(p.ip)).map((p) => p.port))];
+  if (ports.length === 0) ports.push(9091);
+  const known = new Set(parsed.map((p) => `${p.ip}:${p.port}`));
+  const out = [];
+  for (const ip of publicIps) for (const port of ports) if (!known.has(`${ip}:${port}`)) out.push(`/ip4/${ip}/udp/${port}/quic-v1/p2p/${peerId}`);
+  return out;
+};
+
 /** Look a peer ID up in the DHT, dial whatever address it is at now, identify. */
 const probePeerId = async (node, target) => {
   const started = Date.now();
@@ -125,18 +149,35 @@ const probePeerId = async (node, target) => {
   let conn;
   let stage = "lookup"; // which step failed, and what the DHT knew, so a "down" result says whether the node
   let addrs; //           is unknown to the network or known but unreachable (NAT, firewall)
+  let tried; //           the extra public-ip:listen-port guesses dialed after the DHT addresses failed
+  let fallback; //        the guess that answered, if one did
   try {
     const id = peerIdFromString(target.peerId);
     const found = await node.peerRouting.findPeer(id, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
     addrs = found.multiaddrs.map((a) => a.toString());
     stage = "dial";
-    const signal = AbortSignal.timeout(DIAL_TIMEOUT_MS);
-    conn = await node.dial(id, { signal });
+    try {
+      conn = await node.dial(id, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+    } catch (dialErr) {
+      tried = fallbackAddrs(addrs, target.peerId);
+      if (tried.length === 0) throw dialErr;
+      let lastErr = dialErr;
+      for (const a of tried) {
+        try {
+          conn = await node.dial(multiaddr(a), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+          fallback = a;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (!conn) throw lastErr;
+    }
     stage = "identify";
-    const info = await node.services.identify.identify(conn, { signal });
-    return { ...out, ok: true, rttMs: Date.now() - started, host: conn.remoteAddr.toString(), addrs, ...summarize(info) };
+    const info = await node.services.identify.identify(conn, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+    return { ...out, ok: true, rttMs: Date.now() - started, host: conn.remoteAddr.toString(), addrs, ...(fallback ? { fallback, tried } : {}), ...summarize(info) };
   } catch (e) {
-    return { ...out, ok: false, rttMs: Date.now() - started, stage, addrs, error: String(e?.message ?? e).slice(0, 200) };
+    return { ...out, ok: false, rttMs: Date.now() - started, stage, addrs, ...(tried ? { tried } : {}), error: String(e?.message ?? e).slice(0, 200) };
   } finally {
     if (conn) await conn.close().catch(() => {});
   }

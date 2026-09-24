@@ -24,6 +24,10 @@ export type ProbeNode = {
   error?: string;
   /** Which step failed on a peer-ID probe: the DHT lookup, the dial, or identify. */
   stage?: "lookup" | "dial" | "identify";
+  /** public-ip:listen-port guesses dialed after the DHT addresses failed (NAT rewrote the port). */
+  tried?: string[];
+  /** The guess that answered, when the DHT addresses did not. */
+  fallback?: string;
 };
 
 export type ProbeReport = {

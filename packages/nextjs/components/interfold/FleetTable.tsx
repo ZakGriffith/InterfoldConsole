@@ -71,7 +71,7 @@ export const softwarePill = (
       label: "unreachable",
       kind: "bad",
       sub: ago(n.checkedAt),
-      title: `The network knows this node, so it is running, but UDP 9091 cannot be reached from outside: forward the port on the router and allow it in the host firewall. Addresses on record: ${(n.addrs ?? []).join(", ") || "none"}`,
+      title: `The network knows this node, so it is running, but nothing answered from outside: forward its UDP port (9091 by default) on the router and allow it in the host firewall. Dialed: ${[...(n.addrs ?? []), ...(n.tried ?? [])].join(", ") || "none"}`,
     };
   if (!n.ok) return { label: "no answer", kind: "bad", sub: ago(n.checkedAt), title: n.error };
   const v = n.version ?? n.agentVersion ?? "unknown";
