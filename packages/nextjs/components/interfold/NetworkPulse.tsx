@@ -1,7 +1,8 @@
 "use client";
 
+import { E3_FAILED, e3Outcome, useE3Activity } from "~~/hooks/interfold/useE3Activity";
 import { useNetworkPulse } from "~~/hooks/interfold/useNetworkPulse";
-import { fmtCompact, fmtTokens } from "~~/utils/interfold/format";
+import { fmtCompact, fmtDate, fmtTokens } from "~~/utils/interfold/format";
 
 const Tile = ({ value, label, title }: { value: string; label: string; title?: string }) => (
   <div className="if-pulse__tile" title={title}>
@@ -13,6 +14,12 @@ const Tile = ({ value, label, title }: { value: string; label: string; title?: s
 /** Network-wide headline numbers, as on the dashboard's "Interfold network" strip. Safe to show publicly. */
 export const NetworkPulse = () => {
   const { data: n } = useNetworkPulse();
+  const e3 = useE3Activity();
+  const e3s = e3.data?.e3s;
+  const latest = e3s?.[0];
+  const e3Title = latest
+    ? `Latest: E3 #${latest.num}, ${e3Outcome(latest)}${latest.requestedAt ? `, requested ${fmtDate(latest.requestedAt)}` : ""}. ${e3s!.filter(e => e.stage === E3_FAILED).length} of ${e3s!.length} failed.`
+    : "No E3 requested on mainnet yet";
   return (
     <section className="if-pulse" aria-label="Network activity">
       <div className="if-pulse__head">
@@ -37,6 +44,13 @@ export const NetworkPulse = () => {
           label="tickets outstanding"
           title={n ? `${fmtTokens(n.ticketBalance, "sUSDS")} of ticket balance (tFOLD supply)` : undefined}
         />
+        {e3s && (
+          <Tile
+            value={e3s.length.toLocaleString()}
+            label={e3.paused ? "E3s requested · paused" : "E3s requested"}
+            title={e3.paused ? `${e3Title} New requests are paused by the Interfold team.` : e3Title}
+          />
+        )}
       </div>
     </section>
   );

@@ -1,3 +1,4 @@
+import { parseAbi } from "viem";
 import externalContracts from "~~/contracts/externalContracts";
 
 /**
@@ -11,6 +12,22 @@ export const SUSDS = externalContracts[CHAIN_ID].sUSDS;
 export const TICKET_TOKEN = externalContracts[CHAIN_ID].InterfoldTicketToken;
 
 export const REGISTRY_DEPLOYED_ON_BLOCK = BigInt(REGISTRY.deployedOnBlock);
+
+/**
+ * The Interfold (E3 lifecycle) contract: deployments/manifest.json -> mainnet.contracts.interfold in
+ * gnosisguild/interfold. Only the pieces the console reads; the full ABI is 4k lines and unused.
+ */
+export const INTERFOLD = {
+  address: "0x28cF63B459e6218C69EA97ea7D90541cf648c715",
+  /** Proxy's first event (25,786,382), rounded down. */
+  deployedOnBlock: 25_786_000n,
+  abi: parseAbi([
+    "function requestsPaused() view returns (bool)",
+    "event E3StageChanged(uint256 indexed e3Id, uint8 previousStage, uint8 newStage)",
+    "event E3Failed(uint256 indexed e3Id, uint8 failedAtStage, uint8 reason)",
+    "event RequestsPausedSet(bool paused)",
+  ]),
+} as const;
 
 export const LINKS = {
   explorer: "https://etherscan.io",

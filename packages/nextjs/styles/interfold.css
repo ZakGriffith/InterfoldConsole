@@ -1111,7 +1111,8 @@
 }
 .if-pulse__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   background: linear-gradient(180deg, var(--if-paper-2), #0e1626);
   border: 1px solid var(--if-rule);
   border-radius: var(--if-radius-lg);
@@ -1239,9 +1240,10 @@
     gap: 6px;
   }
   .if-pulse__grid {
+    grid-auto-flow: row;
     grid-template-columns: 1fr 1fr;
   }
-  .if-pulse__tile:nth-child(3) {
+  .if-pulse__tile:nth-child(odd) {
     border-left: 0;
   }
   .if-pulse__tile:nth-child(n + 3) {

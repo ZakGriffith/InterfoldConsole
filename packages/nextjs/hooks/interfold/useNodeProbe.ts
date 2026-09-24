@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 /** One row of probe.json, written by .github/workflows/probe.yaml from probe/probe.mjs. */
 export type ProbeNode = {
@@ -89,4 +90,44 @@ export const ago = (iso: string | undefined) => {
   const h = Math.round(m / 60);
   if (h < 36) return `${h} h ago`;
   return `${Math.round(h / 24)} d ago`;
+};
+
+/**
+ * The "Re-probe now" button: POST /api/probe/run dispatches the GitHub workflow. Hidden when the
+ * deployment has no PROBE_DISPATCH_TOKEN. The run takes about 40 s; the report query above picks
+ * the new probe.json up on its next minute tick.
+ */
+export const useProbeRun = () => {
+  const enabled = useQuery({
+    queryKey: ["interfold", "probe-run-enabled"],
+    queryFn: async () => {
+      const r = await fetch("/api/probe/run", { cache: "no-store" });
+      return r.ok ? ((await r.json()) as { enabled: boolean }).enabled : false;
+    },
+    staleTime: Infinity,
+    retry: false,
+  });
+  const run = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/probe/run", { method: "POST" });
+      const body = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) throw new Error(body.error ?? `probe run ${r.status}`);
+    },
+    onSuccess: () => setQueued(true),
+  });
+  // The workflow takes about 40 s and the report refetches once a minute: say "queued" for 90 s.
+  const [queued, setQueued] = useState(false);
+  useEffect(() => {
+    if (!queued) return;
+    const t = setTimeout(() => setQueued(false), 90_000);
+    return () => clearTimeout(t);
+  }, [queued]);
+  return {
+    enabled: enabled.data ?? false,
+    run: () => run.mutate(),
+    isPending: run.isPending,
+    /** A dispatch was accepted in the last 90 s. */
+    queued,
+    error: run.error ?? undefined,
+  };
 };

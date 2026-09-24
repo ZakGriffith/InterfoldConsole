@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { E3History, e3Pill } from "./E3History";
 import { AddressLink, Badge, type BadgeKind, CopyButton, Empty, Field, Note } from "./ui";
 import { type Address, parseEther } from "viem";
 import { useEnsAddress, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
+import { useE3Activity } from "~~/hooks/interfold/useE3Activity";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
-import { type ProbeNode, type ProbeReport, ago, useNodeProbe } from "~~/hooks/interfold/useNodeProbe";
+import { type ProbeNode, type ProbeReport, ago, useNodeProbe, useProbeRun } from "~~/hooks/interfold/useNodeProbe";
 import { type OperatorSource } from "~~/hooks/interfold/useOperatorList";
 import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 import { operatorInstructions } from "~~/utils/interfold/instructions";
@@ -130,6 +132,9 @@ export const FleetTable = ({
 }: Props) => {
   const { owner, params: p } = useConsole();
   const probe = useNodeProbe();
+  const probeRun = useProbeRun();
+  const e3 = useE3Activity();
+  const showE3 = !!e3.data && !e3.failed;
   const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
   const [input, setInput] = useState("");
   const [label, setLabel] = useState("");
@@ -172,6 +177,22 @@ export const FleetTable = ({
               Select all ready ({batchableCount})
             </button>
           )}
+          {probe.report && probeRun.enabled && (
+            <button
+              type="button"
+              className="if-btn if-btn--ghost if-btn--sm"
+              onClick={() => probeRun.run()}
+              disabled={probeRun.isPending || probeRun.queued}
+              title={
+                probeRun.error
+                  ? probeRun.error.message
+                  : "Runs the GitHub probe now instead of waiting for the 10-minute cron; the Software column updates within about a minute"
+              }
+            >
+              {probeRun.isPending ? <span className="if-spinner" /> : null}
+              {probeRun.isPending ? "Starting…" : probeRun.queued ? "Probe queued" : "Re-probe now"}
+            </button>
+          )}
           <button
             type="button"
             className="if-btn if-btn--ghost if-btn--sm"
@@ -206,6 +227,11 @@ export const FleetTable = ({
                     Software
                   </th>
                 )}
+                {showE3 && (
+                  <th title="Committees the registry drafted this node into, from the Interfold contract's E3 events">
+                    E3 duty
+                  </th>
+                )}
                 <th className="if-num">Bond</th>
                 <th className="if-num">Tickets</th>
                 <th className="if-num">Hot wallet ETH</th>
@@ -219,6 +245,7 @@ export const FleetTable = ({
                 const manualOnly = (sources[k] ?? []).length === 1 && sources[k][0] === "manual";
                 const lowEth = s ? s.ethBalance < LOW_ETH : false;
                 const sw = softwarePill(probe.byOperator[k], probe.report, probe.stale);
+                const duty = e3Pill(e3.byOperator[k] ?? [], e3.data?.e3s.length ?? 0);
                 return (
                   <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
                     {batchEnabled && (
@@ -264,6 +291,14 @@ export const FleetTable = ({
                         </div>
                       </td>
                     )}
+                    {showE3 && (
+                      <td title={duty.title}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <Badge kind={duty.kind}>{duty.label}</Badge>
+                          {duty.sub && <span className="if-stat__sub">{duty.sub}</span>}
+                        </div>
+                      </td>
+                    )}
                     <td className="if-num" title={s ? `${s.bond.toString()} wei` : undefined}>
                       {s ? fmtTokens(s.bond) : "-"}
                       {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
@@ -301,6 +336,8 @@ export const FleetTable = ({
           ) : null}
         </p>
       )}
+
+      {showE3 && e3.data && <E3History activity={e3.data} paused={e3.paused} operators={operators} labels={labels} />}
 
       {logsFailed && (
         <Note kind="warn">
