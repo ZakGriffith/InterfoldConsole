@@ -1,4 +1,9 @@
 {
   "_comment": "Optional fixed targets. Normally nodes are found through the console's peer ID registry (PEER_REGISTRY_URL). Add an entry here with either a host (public IP or DNS name, dialed directly on port 9091) or a peerId (looked up in the DHT). Entries here override the registry for the same operator.",
-  "nodes": []
+  "nodes": [],
+  "_comment_seeds": "Static DHT seeds and direct-dial fallbacks (multiaddr with /p2p/): known public ciphernodes, dialed alongside the Interfold bootstrap so the probe still works when that peer is down. The probe also carries forward every address it reached in its last report.",
+  "seeds": [
+    "/ip4/129.212.1.121/udp/9091/quic-v1/p2p/12D3KooWNfi2CTCeWnxjEKR5QopsKiR16mxo65G8YBk4AukSou4e",
+    "/ip4/129.212.1.121/udp/9092/quic-v1/p2p/12D3KooWLeDdc1z3wKyLK9QZnDTppxBjKr4NzbPRFpP6jkiuDtJZ"
+  ]
 }

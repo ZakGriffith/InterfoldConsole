@@ -66,8 +66,8 @@ jobs:
             commit -qm "probe $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" probe-data
 
-      - name: Fail if the bootstrap node did not answer
+      - name: Fail if nothing seeded the probe
         if: steps.dial.outcome == 'failure'
         run: |
-          echo "::error::The probe could not reach the Interfold bootstrap peer, so results are unreliable."
+          echo "::error::Neither the Interfold bootstrap peer nor any previously reached node answered, so the probe could not join the network and its results say nothing about the nodes."
           exit 1

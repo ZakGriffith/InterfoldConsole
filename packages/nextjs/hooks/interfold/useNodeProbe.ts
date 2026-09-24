@@ -37,6 +37,8 @@ export type ProbeReport = {
   /** operators with a registered peer ID at probe time */
   registry?: number;
   dhtPeers?: number;
+  /** Nodes from the last report dialed as extra DHT seeds, so the probe survives a bootstrap outage. */
+  seeds?: { tried: number; ok: number };
   bootstrap: ProbeNode;
   nodes: ProbeNode[];
 };

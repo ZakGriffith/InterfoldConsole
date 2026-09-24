@@ -58,6 +58,14 @@ export const softwarePill = (
     };
   if (stale)
     return { label: "probe stale", kind: "warn", sub: ago(n.checkedAt), title: "The GitHub probe has stopped running" };
+  if (!n.ok && report.bootstrap.ok === false && !report.dhtPeers && !report.seeds?.ok)
+    return {
+      label: "probe offline",
+      kind: "muted",
+      sub: ago(n.checkedAt),
+      title:
+        "The probe could not join the peer network this run (the Interfold bootstrap peer and every previously reached node were silent), so this says nothing about the node.",
+    };
   if (!n.ok && n.stage === "lookup")
     return {
       label: "not on network",
@@ -329,7 +337,9 @@ export const FleetTable = ({
               Last probe {ago(probe.report.generatedAt)}
               {probe.report.latestRelease ? `, latest release ${probe.report.latestRelease}` : ""}
               {probe.report.bootstrap.ok === false
-                ? ". The probe could not reach the Interfold bootstrap peer, so treat results as unreliable."
+                ? probe.report.seeds?.ok
+                  ? `. The Interfold bootstrap peer did not answer; the probe joined the network through ${probe.report.seeds.ok} node${probe.report.seeds.ok === 1 ? "" : "s"} it reached last time.`
+                  : ". The probe could not join the peer network at all this run, so the column says nothing about the nodes."
                 : "."}
               {probe.stale && " The probe has not run for a while; check the workflow on GitHub."}
             </>

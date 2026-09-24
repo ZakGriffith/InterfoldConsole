@@ -30,6 +30,11 @@ const BOOTSTRAP_DNSADDR = "bootstrap.interfold.network";
 const BOOTSTRAP_FALLBACK = "/ip4/34.192.113.100/udp/9501/quic-v1/p2p/12D3KooWKaXTrbunmUXgnFfDJohaadYxx3QR3MCz9Am8VAV5w3QL";
 const PEER_REGISTRY_URL = process.env.PEER_REGISTRY_URL || "https://interfold-console.vercel.app/api/peer-ids";
 const RELEASES = "https://api.github.com/repos/theinterfold/interfold/releases/latest";
+// The previous run's report: every node it reached is a DHT seed and a direct-dial fallback for this run,
+// so the probe keeps working when the Interfold bootstrap peer is down.
+const LAST_REPORT_URL =
+  process.env.LAST_REPORT_URL ||
+  `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY || "ZakGriffith/InterfoldConsole"}/probe-data/probe.json`;
 const DIAL_TIMEOUT_MS = 15_000;
 const LOOKUP_TIMEOUT_MS = 45_000;
 
@@ -75,6 +80,46 @@ const registryPeers = async () => {
     console.warn(`peer registry unavailable (${e.message}); using nodes.json only`);
     return {};
   }
+};
+
+const withPeer = (host, peerId) => (host.includes("/p2p/") ? host : `${host}/p2p/${peerId}`);
+
+/**
+ * peerId -> multiaddr (with /p2p/) of every node worth dialing first: the static seeds in nodes.json,
+ * then the previous report's carried-forward `lastKnown` map, then whatever it reached that run.
+ * Later sources win, so an address that moved is replaced by where the node was last seen.
+ */
+const lastKnownHosts = async (staticSeeds) => {
+  const out = new Map();
+  for (const a of staticSeeds ?? []) {
+    const id = a.split("/p2p/")[1];
+    if (id) out.set(id, a);
+  }
+  if (LAST_REPORT_URL === "off") return out;
+  try {
+    const r = await fetch(`${LAST_REPORT_URL}?t=${Date.now()}`, { headers: { "user-agent": "interfold-console-probe" } });
+    if (!r.ok) throw new Error(`${r.status}`);
+    const { nodes, lastKnown } = await r.json();
+    for (const [id, a] of Object.entries(lastKnown ?? {})) out.set(id, a);
+    for (const n of nodes ?? []) if (n.ok && n.host && n.peerId) out.set(n.peerId, withPeer(n.host, n.peerId));
+  } catch (e) {
+    console.warn(`last report unavailable (${e.message}); static seeds only`);
+  }
+  return out;
+};
+
+/**
+ * Dial an address without its /p2p/ part and check who answered. With the peer ID attached, libp2p's
+ * dial queue would "join" any dial still winding down for that peer (say, one that just timed out) and
+ * hand back its abort instead of dialing.
+ */
+const dialVerified = async (node, id, addr) => {
+  const c = await node.dial(multiaddr(addr).decapsulateCode(421), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+  if (!c.remotePeer.equals(id)) {
+    await c.close().catch(() => {});
+    throw new Error(`${addr.split("/p2p/")[0]} answered as ${c.remotePeer.toString()}, not this node`);
+  }
+  return c;
 };
 
 const bootstrapAddrs = async () => {
@@ -142,43 +187,49 @@ const fallbackAddrs = (addrs, peerId) => {
   return out;
 };
 
-/** Look a peer ID up in the DHT, dial whatever address it is at now, identify. */
-const probePeerId = async (node, target) => {
+/**
+ * Look a peer ID up in the DHT, dial whatever address it is at now, identify. When the lookup fails
+ * (DHT unreachable this run) the node's address from the last report is dialed directly; when the
+ * DHT addresses fail (NAT rewrote the port) each public IP is tried on the node's listen port.
+ */
+const probePeerId = async (node, target, known) => {
   const started = Date.now();
   const out = { operator: target.operator, via: "peer-id", peerId: target.peerId, checkedAt: new Date().toISOString() };
   let conn;
   let stage = "lookup"; // which step failed, and what the DHT knew, so a "down" result says whether the node
   let addrs; //           is unknown to the network or known but unreachable (NAT, firewall)
-  let tried; //           the extra public-ip:listen-port guesses dialed after the DHT addresses failed
-  let fallback; //        the guess that answered, if one did
-  try {
-    const id = peerIdFromString(target.peerId);
-    const found = await node.peerRouting.findPeer(id, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
-    addrs = found.multiaddrs.map((a) => a.toString());
-    stage = "dial";
-    try {
-      conn = await node.dial(id, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
-    } catch (dialErr) {
-      tried = fallbackAddrs(addrs, target.peerId);
-      if (tried.length === 0) throw dialErr;
-      let lastErr = dialErr;
-      for (const a of tried) {
-        try {
-          // Dial the bare address: with /p2p/<id> on it, libp2p's dial queue would "join" the job that just
-          // timed out for this peer and hand back its abort instead of dialing. Verify who answered instead.
-          const c = await node.dial(multiaddr(a).decapsulateCode(421), { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
-          if (!c.remotePeer.equals(id)) {
-            await c.close().catch(() => {});
-            throw new Error(`${a.split("/p2p/")[0]} answered as ${c.remotePeer.toString()}, not this node`);
-          }
-          conn = c;
-          fallback = a;
-          break;
-        } catch (e) {
-          lastErr = e;
-        }
+  let tried; //           the extra addresses dialed after the DHT path failed
+  let fallback; //        the one that answered, if any
+  const id = peerIdFromString(target.peerId);
+  const tryFallbacks = async (candidates, cause) => {
+    tried = [...new Set(candidates)];
+    let lastErr = cause;
+    for (const a of tried) {
+      try {
+        conn = await dialVerified(node, id, a);
+        fallback = a;
+        return;
+      } catch (e) {
+        lastErr = e;
       }
-      if (!conn) throw lastErr;
+    }
+    throw lastErr;
+  };
+  try {
+    try {
+      const found = await node.peerRouting.findPeer(id, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
+      addrs = found.multiaddrs.map((a) => a.toString());
+    } catch (lookupErr) {
+      if (!known) throw lookupErr;
+      await tryFallbacks([known], lookupErr);
+    }
+    if (!conn) {
+      stage = "dial";
+      try {
+        conn = await node.dial(id, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+      } catch (dialErr) {
+        await tryFallbacks([...fallbackAddrs(addrs, target.peerId), ...(known ? [known] : [])], dialErr);
+      }
     }
     stage = "identify";
     const info = await node.services.identify.identify(conn, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
@@ -252,11 +303,32 @@ const main = async () => {
       bootstrap = { operator: "bootstrap", via: "host", host: a, ok: false, rttMs: Date.now() - started, checkedAt: new Date().toISOString(), error: String(e?.message ?? e).slice(0, 200) };
     }
   }
+  // More seeds: every node the last run reached. Keeps the DHT walkable when the bootstrap is down.
+  const known = await lastKnownHosts(cfg.seeds);
+  const seeds = { tried: 0, ok: 0 };
+  await Promise.all(
+    [...known.entries()].filter(([, a]) => !bootAddrs.includes(a)).map(async ([peerId, a]) => {
+      seeds.tried++;
+      let c;
+      try {
+        const id = peerIdFromString(peerId);
+        c = await dialVerified(node, id, a);
+        const info = await node.services.identify.identify(c, { signal: AbortSignal.timeout(DIAL_TIMEOUT_MS) });
+        if (info.protocolVersion !== IDENTIFY_PROTOCOL) throw new Error("not on this network");
+        await node.peerStore.merge(id, { multiaddrs: [c.remoteAddr] });
+        await node.services.dht.routingTable.add(id);
+        seeds.ok++; // keep the connection: the DHT walks from here
+      } catch (e) {
+        if (c) await c.close().catch(() => {});
+        console.warn(`seed ${a.split("/p2p/")[0]} skipped: ${String(e?.message ?? e).slice(0, 80)}`);
+      }
+    }),
+  );
   // Give the DHT a moment to learn that the bootstrap speaks its protocol.
   for (let i = 0; i < 50 && node.services.dht.routingTable.size === 0; i++) await new Promise((r) => setTimeout(r, 200));
 
   const nodes = await Promise.all(
-    [...targets.values()].map((t) => (t.host ? probeHost(node, t) : probePeerId(node, t))),
+    [...targets.values()].map((t) => (t.host ? probeHost(node, t) : probePeerId(node, t, known.get(t.peerId)))),
   );
   const dhtPeers = node.services.dht.routingTable.size; // read before stop() empties the table
   await node.stop();
@@ -267,8 +339,13 @@ const main = async () => {
     identifyProtocol: IDENTIFY_PROTOCOL,
     registry: Object.keys(registry).length,
     dhtPeers,
+    seeds,
     bootstrap,
     nodes,
+    // Carried forward run to run, so a bad run (bootstrap down, nothing reached) does not forget where the nodes were.
+    lastKnown: Object.fromEntries(
+      [...known.entries(), ...nodes.filter((n) => n.ok && n.host && n.peerId).map((n) => [n.peerId, withPeer(n.host, n.peerId)])],
+    ),
   };
   const outPath = process.argv[2] ?? new URL("./probe.json", import.meta.url);
   await writeFile(outPath, JSON.stringify(result, null, 2) + "\n");
@@ -276,7 +353,8 @@ const main = async () => {
     const state = n.ok ? `up   ${n.version ?? n.agentVersion}` : `down ${n.error}`;
     console.log(`${n.operator.padEnd(44)} ${(n.via === "peer-id" ? n.peerId.slice(0, 16) + "…" : String(n.host ?? "")).padEnd(24)} ${state}`);
   }
-  if (!bootstrap.ok) process.exitCode = 1; // the probe itself is broken if even the bootstrap won't answer
+  // The probe itself is broken only if nothing would seed it: neither the bootstrap nor any node from last time.
+  if (!bootstrap.ok && seeds.ok === 0) process.exitCode = 1;
 };
 
 main().catch((e) => {
