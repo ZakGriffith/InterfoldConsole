@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-09-26T18:06:20.293Z",
+  "latestRelease": "0.18.0",
+  "identifyProtocol": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+  "registry": 5,
+  "dhtPeers": 33,
+  "seeds": {
+    "tried": 5,
+    "ok": 5
+  },
+  "bootstrap": {
+    "operator": "bootstrap",
+    "via": "host",
+    "host": "/ip4/34.192.113.100/udp/9501/quic-v1/p2p/12D3KooWKaXTrbunmUXgnFfDJohaadYxx3QR3MCz9Am8VAV5w3QL",
+    "ok": true,
+    "rttMs": 32,
+    "checkedAt": "2026-09-26T18:06:19.815Z",
+    "peerId": "12D3KooWR29dyR6TaFD3xmeTvi1CfsWnTQZrFqgLtnkrhepXcuPk",
+    "agentVersion": "interfold-bootstrap/0.18.0",
+    "version": null,
+    "sameNetwork": true,
+    "protocolVersion": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+    "protocols": [
+      "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/kad/1.0.0",
+      "/meshsub/1.0.0",
+      "/meshsub/1.1.0",
+      "/ipfs/id/1.0.0",
+      "/meshsub/1.2.0",
+      "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/sync/3.0.0",
+      "/ipfs/id/push/1.0.0"
+    ],
+    "listenAddrs": [
+      "/ip4/127.0.0.1/udp/9501/quic-v1",
+      "/ip4/172.31.82.38/udp/9501/quic-v1"
+    ],
+    "warning": "dnsaddr advertises 12D3KooWKaXTrbunmUXgnFfDJohaadYxx3QR3MCz9Am8VAV5w3QL but the node answers as 12D3KooWR29dyR6TaFD3xmeTvi1CfsWnTQZrFqgLtnkrhepXcuPk"
+  },
+  "nodes": [
+    {
+      "operator": "0xcdc8b4379ddf736f8e34b0a65585e07de7060a84",
+      "via": "peer-id",
+      "peerId": "12D3KooWE6srTNkLm1ZocZtgxJ6JqdjvzwUDEBPevctcpEcVY4F5",
+      "checkedAt": "2026-09-26T18:06:20.169Z",
+      "ok": true,
+      "rttMs": 93,
+      "host": "/ip4/207.188.129.217/udp/9091/quic-v1/p2p/12D3KooWE6srTNkLm1ZocZtgxJ6JqdjvzwUDEBPevctcpEcVY4F5",
+      "addrs": [
+        "/ip4/100.127.12.31/udp/9091/quic-v1",
+        "/ip4/127.0.0.1/udp/9091/quic-v1",
+        "/ip4/192.168.1.132/udp/9091/quic-v1",
+        "/ip4/207.188.129.217/udp/9091/quic-v1"
+      ],
+      "agentVersion": "interfold-ciphernode/0.18.0",
+      "version": "0.18.0",
+      "sameNetwork": true,
+      "protocolVersion": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+      "protocols": [
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/sync/3.0.0",
+        "/meshsub/1.2.0",
+        "/meshsub/1.1.0",
+        "/meshsub/1.0.0",
+        "/ipfs/id/1.0.0",
+        "/ipfs/id/push/1.0.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/kad/1.0.0"
+      ],
+      "listenAddrs": [
+        "/ip4/192.168.1.132/udp/9091/quic-v1",
+        "/ip4/100.127.12.31/udp/9091/quic-v1",
+        "/ip4/127.0.0.1/udp/9091/quic-v1"
+      ]
+    },
+    {
+      "operator": "0xdbed503093a01ea08f21144114542e53594536d6",
+      "via": "peer-id",
+      "peerId": "12D3KooWLeDdc1z3wKyLK9QZnDTppxBjKr4NzbPRFpP6jkiuDtJZ",
+      "checkedAt": "2026-09-26T18:06:20.169Z",
+      "ok": true,
+      "rttMs": 118,
+      "host": "/ip4/129.212.1.121/udp/9092/quic-v1/p2p/12D3KooWLeDdc1z3wKyLK9QZnDTppxBjKr4NzbPRFpP6jkiuDtJZ",
+      "addrs": [
+        "/ip4/127.0.0.1/udp/9092/quic-v1",
+        "/ip4/129.212.1.121/udp/9092/quic-v1",
+        "/ip4/192.168.1.38/udp/9092/quic-v1"
+      ],
+      "agentVersion": "interfold-ciphernode/0.18.0",
+      "version": "0.18.0",
+      "sameNetwork": true,
+      "protocolVersion": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+      "protocols": [
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/sync/3.0.0",
+        "/meshsub/1.0.0",
+        "/ipfs/id/push/1.0.0",
+        "/ipfs/id/1.0.0",
+        "/meshsub/1.2.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/kad/1.0.0",
+        "/meshsub/1.1.0"
+      ],
+      "listenAddrs": [
+        "/ip4/127.0.0.1/udp/9092/quic-v1",
+        "/ip4/192.168.1.38/udp/9092/quic-v1"
+      ]
+    },
+    {
+      "operator": "0x18ddbf8aa6f72fc4d9e1911527d0ce1e9f3597d8",
+      "via": "peer-id",
+      "peerId": "12D3KooWHfLnhEFQibfiqKwgxVhjDRBW6btGv1a7vjMD2tDS7bHk",
+      "checkedAt": "2026-09-26T18:06:20.170Z",
+      "ok": true,
+      "rttMs": 61,
+      "host": "/ip4/174.45.108.250/udp/9091/quic-v1/p2p/12D3KooWHfLnhEFQibfiqKwgxVhjDRBW6btGv1a7vjMD2tDS7bHk",
+      "addrs": [
+        "/ip4/100.115.29.40/udp/9091/quic-v1",
+        "/ip4/127.0.0.1/udp/9091/quic-v1",
+        "/ip4/174.45.108.250/udp/9091/quic-v1",
+        "/ip4/192.168.0.183/udp/9091/quic-v1"
+      ],
+      "agentVersion": "interfold-ciphernode/0.18.0",
+      "version": "0.18.0",
+      "sameNetwork": true,
+      "protocolVersion": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+      "protocols": [
+        "/ipfs/id/1.0.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/sync/3.0.0",
+        "/meshsub/1.2.0",
+        "/meshsub/1.1.0",
+        "/meshsub/1.0.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/kad/1.0.0",
+        "/ipfs/id/push/1.0.0"
+      ],
+      "listenAddrs": [
+        "/ip4/192.168.0.183/udp/9091/quic-v1",
+        "/ip4/127.0.0.1/udp/9091/quic-v1",
+        "/ip4/100.115.29.40/udp/9091/quic-v1"
+      ]
+    },
+    {
+      "operator": "0x252a6c33c87c0b439671b983c3f730d2c46a5f1d",
+      "via": "peer-id",
+      "peerId": "12D3KooWNfi2CTCeWnxjEKR5QopsKiR16mxo65G8YBk4AukSou4e",
+      "checkedAt": "2026-09-26T18:06:20.170Z",
+      "ok": true,
+      "rttMs": 50,
+      "host": "/ip4/129.212.1.121/udp/9091/quic-v1/p2p/12D3KooWNfi2CTCeWnxjEKR5QopsKiR16mxo65G8YBk4AukSou4e",
+      "addrs": [
+        "/ip4/127.0.0.1/udp/9091/quic-v1",
+        "/ip4/129.212.1.121/udp/9091/quic-v1",
+        "/ip4/192.168.1.57/udp/9091/quic-v1"
+      ],
+      "agentVersion": "interfold-ciphernode/0.18.0",
+      "version": "0.18.0",
+      "sameNetwork": true,
+      "protocolVersion": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+      "protocols": [
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/kad/1.0.0",
+        "/ipfs/id/1.0.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/sync/3.0.0",
+        "/ipfs/id/push/1.0.0"
+      ],
+      "listenAddrs": [
+        "/ip4/192.168.1.57/udp/9091/quic-v1",
+        "/ip4/127.0.0.1/udp/9091/quic-v1"
+      ]
+    },
+    {
+      "operator": "0xc798b5f60150fbb2db9b061817831df62d2b269c",
+      "via": "peer-id",
+      "peerId": "12D3KooWFKicAd25LUBNWWJRQhYpqPdtAP2MxsYdk3AjLzyy5ztg",
+      "checkedAt": "2026-09-26T18:06:20.170Z",
+      "ok": true,
+      "rttMs": 98,
+      "host": "/ip4/88.5.172.221/udp/9091/quic-v1/p2p/12D3KooWFKicAd25LUBNWWJRQhYpqPdtAP2MxsYdk3AjLzyy5ztg",
+      "addrs": [
+        "/ip4/127.0.0.1/udp/9091/quic-v1",
+        "/ip4/192.168.1.58/udp/9091/quic-v1",
+        "/ip4/88.5.172.221/udp/9091/quic-v1"
+      ],
+      "agentVersion": "interfold-ciphernode/0.18.0",
+      "version": "0.18.0",
+      "sameNetwork": true,
+      "protocolVersion": "interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/deployments/72ef70b8cc8872b70c203759f2efcb661f96a40c7f4c0a1eda86c7f521632f89/1",
+      "protocols": [
+        "/meshsub/1.2.0",
+        "/ipfs/id/1.0.0",
+        "/meshsub/1.1.0",
+        "/ipfs/id/push/1.0.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/kad/1.0.0",
+        "/interfold/c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb/protocol/4/sync/3.0.0",
+        "/meshsub/1.0.0"
+      ],
+      "listenAddrs": [
+        "/ip4/192.168.1.58/udp/9091/quic-v1",
+        "/ip4/127.0.0.1/udp/9091/quic-v1"
+      ]
+    }
+  ],
+  "lastKnown": {
+    "12D3KooWNfi2CTCeWnxjEKR5QopsKiR16mxo65G8YBk4AukSou4e": "/ip4/129.212.1.121/udp/9091/quic-v1/p2p/12D3KooWNfi2CTCeWnxjEKR5QopsKiR16mxo65G8YBk4AukSou4e",
+    "12D3KooWLeDdc1z3wKyLK9QZnDTppxBjKr4NzbPRFpP6jkiuDtJZ": "/ip4/129.212.1.121/udp/9092/quic-v1/p2p/12D3KooWLeDdc1z3wKyLK9QZnDTppxBjKr4NzbPRFpP6jkiuDtJZ",
+    "12D3KooWHfLnhEFQibfiqKwgxVhjDRBW6btGv1a7vjMD2tDS7bHk": "/ip4/174.45.108.250/udp/9091/quic-v1/p2p/12D3KooWHfLnhEFQibfiqKwgxVhjDRBW6btGv1a7vjMD2tDS7bHk",
+    "12D3KooWFKicAd25LUBNWWJRQhYpqPdtAP2MxsYdk3AjLzyy5ztg": "/ip4/88.5.172.221/udp/9091/quic-v1/p2p/12D3KooWFKicAd25LUBNWWJRQhYpqPdtAP2MxsYdk3AjLzyy5ztg",
+    "12D3KooWE6srTNkLm1ZocZtgxJ6JqdjvzwUDEBPevctcpEcVY4F5": "/ip4/207.188.129.217/udp/9091/quic-v1/p2p/12D3KooWE6srTNkLm1ZocZtgxJ6JqdjvzwUDEBPevctcpEcVY4F5"
+  }
+}
