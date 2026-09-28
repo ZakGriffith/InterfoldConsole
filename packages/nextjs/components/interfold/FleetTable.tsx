@@ -7,9 +7,9 @@ import { type Address, parseEther } from "viem";
 import { useEnsAddress, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useE3Activity } from "~~/hooks/interfold/useE3Activity";
+import { type OperatorSource } from "~~/hooks/interfold/useFleet";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type ProbeNode, type ProbeReport, ago, useNodeProbe, useProbeRun } from "~~/hooks/interfold/useNodeProbe";
-import { type OperatorSource } from "~~/hooks/interfold/useOperatorList";
 import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 import { operatorInstructions } from "~~/utils/interfold/instructions";
 
@@ -100,7 +100,8 @@ export const needsAttention = (pill: StatusPill) => pill.kind !== "published";
 /** The bond owner can act on this node right now (authorized, no exit, something left to do). */
 export const batchable = (pill: StatusPill) => pill.kind === "working";
 
-type Props = {
+type TableProps = {
+  owner: Address;
   operators: Address[];
   sources: Record<string, OperatorSource[]>;
   labels: Record<string, string>;
@@ -111,16 +112,13 @@ type Props = {
   batchSelection: ReadonlySet<string>;
   onToggleBatch: (a: Address) => void;
   onSelectAllBatchable: () => void;
-  onAdd: (a: Address, label: string) => void;
   removeManual: (a: Address) => void;
   isDiscovering: boolean;
-  logsFailed: boolean;
-  lastScan: number;
-  refetch: () => void;
 };
 
-/** The nodes this bond owner funds, plus the row to add a new one. Click a row to open its guide. */
+/** One bond owner's nodes. Click a row to open its guide below the lists. */
 export const FleetTable = ({
+  owner,
   operators,
   sources,
   labels,
@@ -131,18 +129,234 @@ export const FleetTable = ({
   batchSelection,
   onToggleBatch,
   onSelectAllBatchable,
-  onAdd,
   removeManual,
   isDiscovering,
-  logsFailed,
-  lastScan,
-  refetch,
-}: Props) => {
-  const { owner, params: p } = useConsole();
+}: TableProps) => {
+  const { params: p } = useConsole();
   const probe = useNodeProbe();
-  const probeRun = useProbeRun();
   const e3 = useE3Activity();
   const showE3 = !!e3.data && !e3.failed;
+
+  const pills = Object.fromEntries(
+    operators.map(op => [
+      op.toLowerCase(),
+      statusPill(statuses[op.toLowerCase()], owner, p?.requiredCiphernodeBond, p?.minTicketBalance),
+    ]),
+  );
+  const batchableCount = operators.filter(op => batchable(pills[op.toLowerCase()])).length;
+
+  if (operators.length === 0)
+    return (
+      <Empty>
+        {isDiscovering ? "Scanning the chain for nodes…" : "No node has named this wallet as bond owner yet."}
+      </Empty>
+    );
+
+  return (
+    <div className="if-table-wrap">
+      <table className="if-table">
+        <thead>
+          <tr>
+            {batchEnabled && (
+              <th title="Tick nodes to batch their remaining steps into one Safe transaction">
+                {batchableCount > 1 ? (
+                  <button type="button" className="if-link if-th-link" onClick={onSelectAllBatchable}>
+                    Batch all
+                  </button>
+                ) : (
+                  "Batch"
+                )}
+              </th>
+            )}
+            <th>Node</th>
+            <th title="On-chain state from the bonding registry: bond, registration, tickets. Not liveness.">Status</th>
+            {probe.report && (
+              <th title="What the node answered on the peer network when the probe last found it (every 10 min)">
+                Software
+              </th>
+            )}
+            {showE3 && (
+              <th title="Committees the registry drafted this node into, from the Interfold contract's E3 events">
+                E3 duty
+              </th>
+            )}
+            <th className="if-num">Bond</th>
+            <th className="if-num">Tickets</th>
+            <th className="if-num">Hot wallet ETH</th>
+          </tr>
+        </thead>
+        <tbody>
+          {operators.map(op => {
+            const k = op.toLowerCase();
+            const s = statuses[k];
+            const pill = pills[k];
+            const manualOnly = (sources[k] ?? []).length === 1 && sources[k][0] === "manual";
+            const lowEth = s ? s.ethBalance < LOW_ETH : false;
+            const sw = softwarePill(probe.byOperator[k], probe.report, probe.stale);
+            const duty = e3Pill(e3.byOperator[k] ?? [], e3.data?.e3s.length ?? 0);
+            return (
+              <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
+                {batchEnabled && (
+                  <td onClick={e => e.stopPropagation()} style={{ cursor: "default" }}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Include ${op} in batch`}
+                      checked={batchSelection.has(k)}
+                      disabled={!batchable(pill)}
+                      onChange={() => onToggleBatch(op)}
+                    />
+                  </td>
+                )}
+                <td>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {labels[k] && <span style={{ fontWeight: 600 }}>{labels[k]}</span>}
+                    <span className="if-actions" style={{ gap: 6 }}>
+                      <AddressLink address={op} />
+                      {manualOnly && (
+                        <button
+                          type="button"
+                          className="if-btn if-btn--ghost if-btn--xs"
+                          title="Remove this manually added node from the list"
+                          onClick={e => {
+                            e.stopPropagation();
+                            removeManual(op);
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <Badge kind={pill.kind}>{pill.label}</Badge>
+                </td>
+                {probe.report && (
+                  <td title={sw.title}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                      <Badge kind={sw.kind}>{sw.label}</Badge>
+                      {sw.sub && <span className="if-stat__sub">{sw.sub}</span>}
+                    </div>
+                  </td>
+                )}
+                {showE3 && (
+                  <td title={duty.title}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                      <Badge kind={duty.kind}>{duty.label}</Badge>
+                      {duty.sub && <span className="if-stat__sub">{duty.sub}</span>}
+                    </div>
+                  </td>
+                )}
+                <td className="if-num" title={s ? `${s.bond.toString()} wei` : undefined}>
+                  {s ? fmtTokens(s.bond) : "-"}
+                  {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
+                </td>
+                <td className="if-num">{s ? s.availableTickets.toString() : "-"}</td>
+                <td
+                  className="if-num"
+                  style={lowEth ? { color: "var(--if-bad-ink)" } : undefined}
+                  title={lowEth ? "Below 0.01 ETH: the node cannot pay for its duties" : undefined}
+                >
+                  {s ? fmtEth(s.ethBalance) : "-"}
+                  {lowEth && " ⚠"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+/** Scan time plus the two refresh buttons, once for the whole page. */
+export const FleetToolbar = ({
+  lastScan,
+  isDiscovering,
+  refetch,
+}: {
+  lastScan: number;
+  isDiscovering: boolean;
+  refetch: () => void;
+}) => {
+  const probe = useNodeProbe();
+  const probeRun = useProbeRun();
+  return (
+    <div className="if-actions" style={{ justifyContent: "flex-end" }}>
+      <span className="if-stat__sub">{lastScan ? `scanned ${new Date(lastScan).toLocaleTimeString()}` : ""}</span>
+      {probe.report && probeRun.enabled && (
+        <button
+          type="button"
+          className="if-btn if-btn--ghost if-btn--sm"
+          onClick={() => probeRun.run()}
+          disabled={probeRun.isPending || probeRun.queued}
+          title={
+            probeRun.error
+              ? probeRun.error.message
+              : "Runs the GitHub probe now instead of waiting for the 10-minute cron; the Software column updates within about a minute"
+          }
+        >
+          {probeRun.isPending ? <span className="if-spinner" /> : null}
+          {probeRun.isPending ? "Starting…" : probeRun.queued ? "Probe queued" : "Re-probe now"}
+        </button>
+      )}
+      <button
+        type="button"
+        className="if-btn if-btn--ghost if-btn--sm"
+        onClick={refetch}
+        disabled={isDiscovering}
+        title="Re-reads the chain for nodes that named these wallets as bond owner (also runs every 2 minutes)"
+      >
+        {isDiscovering ? <span className="if-spinner" /> : null}
+        {isDiscovering ? "Scanning…" : "Scan for new nodes"}
+      </button>
+    </div>
+  );
+};
+
+/** Probe footnote, E3 history and the RPC warning, once under all the lists. */
+export const FleetNotes = ({
+  operators,
+  labels,
+  logsFailed,
+}: {
+  operators: Address[];
+  labels: Record<string, string>;
+  logsFailed: boolean;
+}) => {
+  const probe = useNodeProbe();
+  const e3 = useE3Activity();
+  const showE3 = !!e3.data && !e3.failed;
+  return (
+    <>
+      {operators.length > 0 && probe.report && (
+        <p className="if-stat__sub" style={{ margin: 0 }}>
+          Software column: every 10 minutes a probe looks each registered node up on the peer network and reads the
+          version it announces. &quot;No peer ID&quot; means the node is not registered yet; click the row for how. Last
+          probe {ago(probe.report.generatedAt)}
+          {probe.report.latestRelease ? `, latest release ${probe.report.latestRelease}` : ""}
+          {probe.report.bootstrap.ok === false
+            ? probe.report.seeds?.ok
+              ? `. The Interfold bootstrap peer did not answer; the probe joined the network through ${probe.report.seeds.ok} node${probe.report.seeds.ok === 1 ? "" : "s"} it reached last time.`
+              : ". The probe could not join the peer network at all this run, so the column says nothing about the nodes."
+            : "."}
+          {probe.stale && " The probe has not run for a while; check the workflow on GitHub."}
+        </p>
+      )}
+      {showE3 && e3.data && <E3History activity={e3.data} paused={e3.paused} operators={operators} labels={labels} />}
+      {logsFailed && (
+        <Note kind="warn">
+          The RPC refused the event scan, so only Safe history and manually added nodes are listed. Set{" "}
+          <code>NEXT_PUBLIC_ALCHEMY_API_KEY</code> for full discovery.
+        </Note>
+      )}
+    </>
+  );
+};
+
+/** Add a node to one owner's list by operator key, with an optional label. */
+export const AddNodeRow = ({ owner, onAdd }: { owner: Address; onAdd: (a: Address, label: string) => void }) => {
+  const { params: p } = useConsole();
   const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
   const [input, setInput] = useState("");
   const [label, setLabel] = useState("");
@@ -156,14 +370,6 @@ export const FleetTable = ({
   const isOwner = !!resolved && sameAddr(resolved, owner);
   const invalid = (input.trim() !== "" && !resolved && !isLoading) || isOwner;
 
-  const pills = Object.fromEntries(
-    operators.map(op => [
-      op.toLowerCase(),
-      statusPill(statuses[op.toLowerCase()], owner, p?.requiredCiphernodeBond, p?.minTicketBalance),
-    ]),
-  );
-  const batchableCount = operators.filter(op => batchable(pills[op.toLowerCase()])).length;
-
   const add = () => {
     if (!resolved || isOwner) return;
     onAdd(resolved, label.trim());
@@ -172,223 +378,38 @@ export const FleetTable = ({
   };
 
   return (
-    <section className="if-guide" style={{ gap: 12 }}>
-      <header className="if-card__head" style={{ marginBottom: 0 }}>
-        <div>
-          <div className="if-eyebrow">Nodes</div>
-          <h2 className="if-section-title">Ciphernodes this bond owner funds</h2>
-        </div>
-        <div className="if-actions">
-          <span className="if-stat__sub">{lastScan ? `scanned ${new Date(lastScan).toLocaleTimeString()}` : ""}</span>
-          {batchEnabled && batchableCount > 1 && (
-            <button type="button" className="if-btn if-btn--ghost if-btn--sm" onClick={onSelectAllBatchable}>
-              Select all ready ({batchableCount})
-            </button>
-          )}
-          {probe.report && probeRun.enabled && (
-            <button
-              type="button"
-              className="if-btn if-btn--ghost if-btn--sm"
-              onClick={() => probeRun.run()}
-              disabled={probeRun.isPending || probeRun.queued}
-              title={
-                probeRun.error
-                  ? probeRun.error.message
-                  : "Runs the GitHub probe now instead of waiting for the 10-minute cron; the Software column updates within about a minute"
-              }
-            >
-              {probeRun.isPending ? <span className="if-spinner" /> : null}
-              {probeRun.isPending ? "Starting…" : probeRun.queued ? "Probe queued" : "Re-probe now"}
-            </button>
-          )}
-          <button
-            type="button"
-            className="if-btn if-btn--ghost if-btn--sm"
-            onClick={() => refetch()}
-            disabled={isDiscovering}
-            title="Re-reads the chain for nodes that named this wallet as bond owner (also runs every 2 minutes)"
-          >
-            {isDiscovering ? <span className="if-spinner" /> : null}
-            {isDiscovering ? "Scanning…" : "Scan for new nodes"}
-          </button>
-        </div>
-      </header>
-
-      {operators.length === 0 ? (
-        <Empty>
-          {isDiscovering ? "Scanning the chain for nodes…" : "No nodes yet. Add a node's operator key below."}
-        </Empty>
-      ) : (
-        <div className="if-table-wrap">
-          <table className="if-table">
-            <thead>
-              <tr>
-                {batchEnabled && (
-                  <th title="Tick nodes to batch their remaining steps into one Safe transaction">Batch</th>
-                )}
-                <th>Node</th>
-                <th title="On-chain state from the bonding registry: bond, registration, tickets. Not liveness.">
-                  Status
-                </th>
-                {probe.report && (
-                  <th title="What the node answered on the peer network when the probe last found it (every 10 min)">
-                    Software
-                  </th>
-                )}
-                {showE3 && (
-                  <th title="Committees the registry drafted this node into, from the Interfold contract's E3 events">
-                    E3 duty
-                  </th>
-                )}
-                <th className="if-num">Bond</th>
-                <th className="if-num">Tickets</th>
-                <th className="if-num">Hot wallet ETH</th>
-              </tr>
-            </thead>
-            <tbody>
-              {operators.map(op => {
-                const k = op.toLowerCase();
-                const s = statuses[k];
-                const pill = pills[k];
-                const manualOnly = (sources[k] ?? []).length === 1 && sources[k][0] === "manual";
-                const lowEth = s ? s.ethBalance < LOW_ETH : false;
-                const sw = softwarePill(probe.byOperator[k], probe.report, probe.stale);
-                const duty = e3Pill(e3.byOperator[k] ?? [], e3.data?.e3s.length ?? 0);
-                return (
-                  <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
-                    {batchEnabled && (
-                      <td onClick={e => e.stopPropagation()} style={{ cursor: "default" }}>
-                        <input
-                          type="checkbox"
-                          aria-label={`Include ${op} in batch`}
-                          checked={batchSelection.has(k)}
-                          disabled={!batchable(pill)}
-                          onChange={() => onToggleBatch(op)}
-                        />
-                      </td>
-                    )}
-                    <td>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                        {labels[k] && <span style={{ fontWeight: 600 }}>{labels[k]}</span>}
-                        <span className="if-actions" style={{ gap: 6 }}>
-                          <AddressLink address={op} />
-                          {manualOnly && (
-                            <button
-                              type="button"
-                              className="if-btn if-btn--ghost if-btn--xs"
-                              title="Remove this manually added node from the list"
-                              onClick={e => {
-                                e.stopPropagation();
-                                removeManual(op);
-                              }}
-                            >
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <Badge kind={pill.kind}>{pill.label}</Badge>
-                    </td>
-                    {probe.report && (
-                      <td title={sw.title}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                          <Badge kind={sw.kind}>{sw.label}</Badge>
-                          {sw.sub && <span className="if-stat__sub">{sw.sub}</span>}
-                        </div>
-                      </td>
-                    )}
-                    {showE3 && (
-                      <td title={duty.title}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                          <Badge kind={duty.kind}>{duty.label}</Badge>
-                          {duty.sub && <span className="if-stat__sub">{duty.sub}</span>}
-                        </div>
-                      </td>
-                    )}
-                    <td className="if-num" title={s ? `${s.bond.toString()} wei` : undefined}>
-                      {s ? fmtTokens(s.bond) : "-"}
-                      {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
-                    </td>
-                    <td className="if-num">{s ? s.availableTickets.toString() : "-"}</td>
-                    <td
-                      className="if-num"
-                      style={lowEth ? { color: "var(--if-bad-ink)" } : undefined}
-                      title={lowEth ? "Below 0.01 ETH: the node cannot pay for its duties" : undefined}
-                    >
-                      {s ? fmtEth(s.ethBalance) : "-"}
-                      {lowEth && " ⚠"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {operators.length > 0 && (
-        <p className="if-stat__sub" style={{ margin: 0 }}>
-          {probe.report ? (
-            <>
-              Software column: every 10 minutes a probe looks each registered node up on the peer network and reads the
-              version it announces. &quot;No peer ID&quot; means the node is not registered yet; click the row for how.
-              Last probe {ago(probe.report.generatedAt)}
-              {probe.report.latestRelease ? `, latest release ${probe.report.latestRelease}` : ""}
-              {probe.report.bootstrap.ok === false
-                ? probe.report.seeds?.ok
-                  ? `. The Interfold bootstrap peer did not answer; the probe joined the network through ${probe.report.seeds.ok} node${probe.report.seeds.ok === 1 ? "" : "s"} it reached last time.`
-                  : ". The probe could not join the peer network at all this run, so the column says nothing about the nodes."
-                : "."}
-              {probe.stale && " The probe has not run for a while; check the workflow on GitHub."}
-            </>
-          ) : null}
-        </p>
-      )}
-
-      {showE3 && e3.data && <E3History activity={e3.data} paused={e3.paused} operators={operators} labels={labels} />}
-
-      {logsFailed && (
-        <Note kind="warn">
-          The RPC refused the event scan, so only Safe history and manually added nodes are listed. Set{" "}
-          <code>NEXT_PUBLIC_ALCHEMY_API_KEY</code> for full discovery.
-        </Note>
-      )}
-
-      <div className="if-addrow">
-        <Field
-          label="Add a node (operator key or ENS)"
-          value={input}
-          onChange={setInput}
-          placeholder="0x…"
-          invalid={invalid}
-          hint={
-            isOwner
-              ? "That is the bond owner itself; the operator key is the node hot wallet."
-              : invalid
-                ? "Not a valid address."
-                : undefined
-          }
+    <div className="if-addrow">
+      <Field
+        label="Add a node (operator key or ENS)"
+        value={input}
+        onChange={setInput}
+        placeholder="0x…"
+        invalid={invalid}
+        hint={
+          isOwner
+            ? "That is the bond owner itself; the operator key is the node hot wallet."
+            : invalid
+              ? "Not a valid address."
+              : undefined
+        }
+      />
+      <Field
+        label="Label (optional)"
+        value={label}
+        onChange={setLabel}
+        placeholder="e.g. Alice / hetzner-1"
+        mono={false}
+      />
+      <div className="if-addrow__actions">
+        <button type="button" className="if-btn if-btn--primary" disabled={!resolved || isOwner} onClick={add}>
+          Add node
+        </button>
+        <CopyButton
+          text={operatorInstructions(owner, p, ownerEns ?? undefined)}
+          label="Copy instructions for a node operator"
+          className="if-btn--sm"
         />
-        <Field
-          label="Label (optional)"
-          value={label}
-          onChange={setLabel}
-          placeholder="e.g. Alice / hetzner-1"
-          mono={false}
-        />
-        <div className="if-addrow__actions">
-          <button type="button" className="if-btn if-btn--primary" disabled={!resolved || isOwner} onClick={add}>
-            Add node
-          </button>
-          <CopyButton
-            text={operatorInstructions(owner, p, ownerEns ?? undefined)}
-            label="Copy instructions for a node operator"
-            className="if-btn--sm"
-          />
-        </div>
       </div>
-    </section>
+    </div>
   );
 };

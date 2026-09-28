@@ -2,40 +2,39 @@
 
 import { UnlockStrip } from "./UnlockStrip";
 import { AddressLink, Badge } from "./ui";
-import { useEnsName } from "wagmi";
+import { type Address } from "viem";
+import { useBytecode, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
-import { susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
-import { safeQueue } from "~~/utils/interfold/contracts";
-import { fmtTokens, sameAddr } from "~~/utils/interfold/format";
+import { type FleetSection } from "~~/hooks/interfold/useFleet";
+import { useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
+import { CHAIN_ID, safeQueue } from "~~/utils/interfold/contracts";
+import { fmtTokens, isContractCode, sameAddr } from "~~/utils/interfold/format";
 
-/** Section header: who the bond owner is, how it relates to the connected wallet, what it holds. */
-export const BondOwnerCard = () => {
-  const {
-    owner,
-    ownerSource,
-    ownerIsContract,
-    setOwnerOverride,
-    removeOwner,
-    connected,
-    connMode,
-    funds: f,
-    params: p,
-  } = useConsole();
-  const { data: ens } = useEnsName({ address: owner, chainId: 1 });
+type Props = {
+  section: FleetSection;
+  /** The owner the connection resolved to: its section can act, and it carries the FOLD unlock line. */
+  primary: boolean;
+  onRemove?: (a: Address) => void;
+};
 
-  const nodes = f && p && p.requiredCiphernodeBond > 0n ? f.foldBalance / p.requiredCiphernodeBond : undefined;
-  const usds = f ? susdsToUsds(f.susdsBalance, f.susdsRate) : undefined;
-  const isConnectedOwner = sameAddr(connected, owner);
+/** One line above each list: who the bond owner is, how it relates to the connected wallet, what it holds. */
+export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
+  const { connected, connMode, ownerSource, setOwnerOverride } = useConsole();
+  const { data: ens } = useEnsName({ address: s.owner, chainId: 1 });
+  const { data: code } = useBytecode({ address: s.owner, chainId: CHAIN_ID });
+  const isContract = isContractCode(code);
+  const { data: f } = useOwnerFunds(s.owner);
+
+  const isConnectedOwner = sameAddr(connected, s.owner);
   const conn =
     connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "Safe via WalletConnect" : "plain wallet";
-  const relation =
-    ownerSource === "override"
+  const relation = !primary
+    ? isContract
+      ? "Safe · read-only from this wallet"
+      : "read-only from this wallet"
+    : ownerSource === "override"
       ? "viewing"
-      : ownerSource === "extra"
-        ? ownerIsContract
-          ? "Safe · read-only from this wallet"
-          : "read-only from this wallet"
-        : "owner of the connected node";
+      : "owner of the connected node";
 
   return (
     <section className="if-owner">
@@ -45,13 +44,13 @@ export const BondOwnerCard = () => {
         </span>
         <div className="if-actions" style={{ gap: 8 }}>
           {ens && <span className="if-owner__name">{ens}</span>}
-          <AddressLink address={owner} />
+          <AddressLink address={s.owner} />
           {isConnectedOwner ? (
-            <Badge kind={ownerIsContract ? "open" : "muted"}>connected · {conn}</Badge>
+            <Badge kind={isContract ? "open" : "muted"}>connected · {conn}</Badge>
           ) : (
             <Badge kind="muted">{relation}</Badge>
           )}
-          {ownerSource === "override" && (
+          {primary && ownerSource === "override" && (
             <button
               type="button"
               className="if-btn if-btn--ghost if-btn--xs"
@@ -60,12 +59,12 @@ export const BondOwnerCard = () => {
               Back to my wallet
             </button>
           )}
-          {ownerSource === "extra" && (
+          {!primary && onRemove && (
             <button
               type="button"
               className="if-btn if-btn--ghost if-btn--xs"
-              title="Remove this section from the Fleet page"
-              onClick={() => removeOwner(owner)}
+              title="Remove this bond owner from the Fleet page"
+              onClick={() => onRemove(s.owner)}
             >
               ×
             </button>
@@ -73,32 +72,35 @@ export const BondOwnerCard = () => {
         </div>
       </div>
       <div className="if-owner__stats">
+        <div className="if-owner__stat">
+          <span className="if-owner__value if-mono">
+            {s.nodeCount}
+            {s.eligible !== s.nodeCount && <span className="if-stat__of"> · {s.eligible} eligible</span>}
+          </span>
+          <span className="if-owner__label">node{s.nodeCount === 1 ? "" : "s"}</span>
+        </div>
+        <div className="if-owner__stat">
+          <span className="if-owner__value if-mono">{fmtTokens(s.totalBonded)}</span>
+          <span className="if-owner__label">FOLD bonded</span>
+        </div>
         <div
           className="if-owner__stat"
           title={f ? `${fmtTokens(f.foldTransferable)} transferable; locked FOLD still counts for bonding` : undefined}
         >
           <span className="if-owner__value if-mono">{fmtTokens(f?.foldBalance)}</span>
-          <span className="if-owner__label">FOLD</span>
+          <span className="if-owner__label">FOLD in wallet</span>
         </div>
-        <div className="if-owner__stat" title={usds !== undefined ? `about ${fmtTokens(usds, "USDS")}` : undefined}>
+        <div className="if-owner__stat">
           <span className="if-owner__value if-mono">{fmtTokens(f?.susdsBalance)}</span>
           <span className="if-owner__label">sUSDS</span>
         </div>
-        <div className="if-owner__stat">
-          <span className="if-owner__value if-mono">{fmtTokens(f?.totalBonded)}</span>
-          <span className="if-owner__label">FOLD bonded</span>
-        </div>
-        <div className="if-owner__stat">
-          <span className="if-owner__value if-mono">{nodes === undefined ? "-" : nodes.toString()}</span>
-          <span className="if-owner__label">more nodes fundable</span>
-        </div>
-        {ownerIsContract && (
-          <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(owner)} target="_blank" rel="noreferrer">
+        {isContract && (
+          <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(s.owner)} target="_blank" rel="noreferrer">
             Safe queue <span className="if-btn__arrow">→</span>
           </a>
         )}
       </div>
-      <UnlockStrip owner={owner} />
+      {primary && <UnlockStrip owner={s.owner} />}
     </section>
   );
 };
