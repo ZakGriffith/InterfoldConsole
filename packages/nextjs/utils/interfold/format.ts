@@ -83,3 +83,11 @@ export const safeNormalize = (name: string | undefined): string | undefined => {
     return undefined;
   }
 };
+
+/**
+ * True only for a real contract account. An EIP-7702 delegated EOA (MetaMask smart account and the
+ * like) returns a 23-byte `0xef0100…` designator from eth_getCode, but it still signs and sends like
+ * a plain key, so it must not be treated as a Safe.
+ */
+export const isContractCode = (code: string | undefined | null): boolean =>
+  !!code && code !== "0x" && !/^0xef0100[0-9a-f]{40}$/i.test(code);

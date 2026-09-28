@@ -2,6 +2,7 @@
 
 import { useAccount, useBytecode } from "wagmi";
 import { CHAIN_ID } from "~~/utils/interfold/contracts";
+import { isContractCode } from "~~/utils/interfold/format";
 
 export type ConnectionMode = "safe-app" | "safe-wc" | "eoa" | "none";
 
@@ -15,7 +16,7 @@ export const useIsSafeAccount = () => {
   const { address, connector, chainId, isConnected } = useAccount();
   const { data: code, isLoading } = useBytecode({ address, chainId: CHAIN_ID, query: { enabled: !!address } });
   const isSafeApp = connector?.id === "safe";
-  const isContractAccount = !!code && code !== "0x";
+  const isContractAccount = isContractCode(code);
   const isSafe = isSafeApp || isContractAccount;
   const mode: ConnectionMode = !address ? "none" : isSafeApp ? "safe-app" : isContractAccount ? "safe-wc" : "eoa";
   return {

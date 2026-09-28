@@ -8,13 +8,22 @@ import { PeerIdCard } from "./PeerIdCard";
 import { RequirementsList } from "./RequirementsNote";
 import { AddressLink, Badge, CommandBlock, Dl, Field, Note } from "./ui";
 import { type Address, zeroAddress } from "viem";
-import { useEnsAddress } from "wagmi";
+import { useBytecode, useEnsAddress } from "wagmi";
 import { useOperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { useNodeProbe } from "~~/hooks/interfold/useNodeProbe";
 import { useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { useRegistryParams } from "~~/hooks/interfold/useRegistryParams";
 import { planOnboarding } from "~~/utils/interfold/batch";
-import { fmtEth, fmtTokens, maxBig, parseWholeInput, safeNormalize, toChecksum } from "~~/utils/interfold/format";
+import { CHAIN_ID } from "~~/utils/interfold/contracts";
+import {
+  fmtEth,
+  fmtTokens,
+  isContractCode,
+  maxBig,
+  parseWholeInput,
+  safeNormalize,
+  toChecksum,
+} from "~~/utils/interfold/format";
 
 export const YOUR_NODE_KEY = "interfold.yournode.offline";
 
@@ -66,6 +75,10 @@ export const OfflineNode = () => {
   const onChainOwner: Address | undefined = s && s.bondOwner !== zeroAddress ? s.bondOwner : undefined;
   const owner: Address | undefined = onChainOwner ?? ownerIn.resolved ?? undefined;
   const { data: funds } = useOwnerFunds(owner);
+  const { data: ownerCode } = useBytecode({ address: owner, chainId: CHAIN_ID, query: { enabled: !!owner } });
+  // Only a contract owner (a Safe) takes a Transaction Builder file; a plain key sends from the Fleet page.
+  const ownerIsContract = isContractCode(ownerCode);
+  const ownerIsPlainKey = !!owner && ownerCode !== undefined && !ownerIsContract;
 
   const minTickets = params ? maxBig(1n, params.minTicketBalance) : 1n;
   const ticketsWanted = parseWholeInput(ticketsIn) ?? minTickets;
@@ -90,10 +103,11 @@ export const OfflineNode = () => {
     <main className="if-main" style={{ gap: 28 }}>
       <header className="if-guide__head">
         <div className="if-eyebrow">Set up a node</div>
-        <h1 className="if-guide__title">Paste your operator key. Get the Safe batch file.</h1>
+        <h1 className="if-guide__title">Paste your operator key. See what the node still needs.</h1>
         <p className="if-guide__lede">
-          No wallet needed. The console reads the node on-chain, works out what its bond owner still has to do, and
-          produces the file a Safe signer imports to bond, register and buy tickets in one transaction.
+          No wallet needed. The console reads the node on-chain and works out what its bond owner still has to do. A
+          Safe gets a file its signers import to bond, register and buy tickets in one transaction; a plain wallet sends
+          the steps from the Fleet page.
         </p>
       </header>
 
@@ -215,7 +229,15 @@ export const OfflineNode = () => {
             tickets={plan && params.ticketPrice > 0n ? plan.totalSusds / params.ticketPrice : undefined}
             compact
           />
-          {plan && (
+          {plan && ownerIsPlainKey && plan.calls.length > 0 && (
+            <Note>
+              The bond owner is a plain wallet, not a Safe, so there is no batch file to import. Connect it on the Fleet
+              page and send the {plan.calls.length} remaining step{plan.calls.length === 1 ? "" : "s"} one transaction
+              at a time.
+            </Note>
+          )}
+          {plan && ownerIsPlainKey && plan.calls.length === 0 && <Note>Nothing left to do for this node.</Note>}
+          {plan && !ownerIsPlainKey && (
             <BatchExport
               calls={plan.calls}
               owner={owner}
@@ -230,10 +252,11 @@ export const OfflineNode = () => {
 
       <div className="if-actions" style={{ justifyContent: "space-between" }}>
         <span className="if-stat__sub">
-          Holding the bond owner wallet yourself, or the node&apos;s hot wallet? The Fleet page sends the steps directly
-          instead of exporting a file.
+          {ownerIsPlainKey
+            ? "Holding the bond owner wallet, or the node's hot wallet? Connect it on the Fleet page to send the steps."
+            : "Holding the bond owner wallet yourself, or the node's hot wallet? The Fleet page sends the steps directly instead of exporting a file."}
         </span>
-        <Link href="/" className="if-btn if-btn--ghost if-btn--sm">
+        <Link href="/" className={`if-btn if-btn--sm ${ownerIsPlainKey ? "if-btn--primary" : "if-btn--ghost"}`}>
           Open Fleet
         </Link>
       </div>

@@ -9,7 +9,7 @@ import { type ConnectionMode, useIsSafeAccount } from "~~/hooks/interfold/useIsS
 import { type OwnerFunds, useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { type RegistryParams, useRegistryParams } from "~~/hooks/interfold/useRegistryParams";
 import { CHAIN_ID, REGISTRY } from "~~/utils/interfold/contracts";
-import { sameAddr } from "~~/utils/interfold/format";
+import { isContractCode, sameAddr } from "~~/utils/interfold/format";
 
 export type OwnerSource = "override" | "connected" | "operator-of-connected";
 
@@ -126,7 +126,7 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
     chainId: CHAIN_ID,
     query: { enabled: !!resolved?.owner },
   });
-  const ownerIsContract = !!ownerCode && ownerCode !== "0x";
+  const ownerIsContract = isContractCode(ownerCode);
 
   if (!acct.address || !acct.isConnected || !resolved) return <>{gate ?? <ConnectGate />}</>;
   // Plain key with no override yet: wait for its balances before deciding owner vs. hot wallet (no flash).
