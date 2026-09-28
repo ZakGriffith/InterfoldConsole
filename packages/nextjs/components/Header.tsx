@@ -7,11 +7,10 @@ import { LINKS } from "~~/utils/interfold/contracts";
 
 type HeaderMenuLink = { label: string; href: string; external?: boolean };
 
-/** Fleet is for the wallet that funds nodes, Set up a node for whoever runs one, Watch for anyone reading along. */
+/** Fleet lists bond owners and their nodes (connect to act on yours); Set up a node is for whoever runs one. */
 export const menuLinks: HeaderMenuLink[] = [
   { label: "Fleet", href: "/" },
   { label: "Set up a node", href: "/my-node" },
-  { label: "Watch", href: "/watch" },
   { label: "Contracts", href: "/debug" },
   { label: "Docs", href: LINKS.docs, external: true },
 ];

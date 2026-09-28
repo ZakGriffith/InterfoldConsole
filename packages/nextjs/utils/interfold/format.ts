@@ -91,3 +91,14 @@ export const safeNormalize = (name: string | undefined): string | undefined => {
  */
 export const isContractCode = (code: string | undefined | null): boolean =>
   !!code && code !== "0x" && !/^0xef0100[0-9a-f]{40}$/i.test(code);
+
+/** Every checksummable address in a pasted blob (commas, spaces or newlines between them), de-duplicated. */
+export const parseAddressList = (raw: string | null | undefined): Address[] => {
+  const out: Address[] = [];
+  for (const t of (raw ?? "").split(/[\s,;]+/)) {
+    if (!isAddress(t)) continue;
+    const a = getAddress(t);
+    if (!out.some(x => sameAddr(x, a))) out.push(a);
+  }
+  return out;
+};

@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
+import { ConnectGate } from "./ConnectGate";
 import { AddNodeRow, FleetNotes, FleetTable, FleetToolbar, batchable, needsAttention, statusPill } from "./FleetTable";
 import { OperatorWizard } from "./OperatorWizard";
 import { PeerIdCard } from "./PeerIdCard";
 import { Empty, Field, Loader, Note } from "./ui";
-import { type Address } from "viem";
+import { type Address, zeroAddress } from "viem";
 import { useEnsAddress } from "wagmi";
 import { ConsoleProvider, OwnerScope, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useFleet } from "~~/hooks/interfold/useFleet";
@@ -112,14 +113,13 @@ const Inner = () => {
       else next.add(k);
       return next;
     });
+  const primaryOps = primaryOwner && primary ? primary.operators : [];
   const selectAllBatchable = () =>
-    setBatchSel(
-      new Set((primary?.operators ?? []).filter(op => batchable(pillOf(primaryOwner, op))).map(op => op.toLowerCase())),
-    );
-  const batchNodes = (primary?.operators ?? [])
+    setBatchSel(new Set(primaryOps.filter(op => batchable(pillOf(primaryOwner!, op))).map(op => op.toLowerCase())));
+  const batchNodes = primaryOps
     .filter(op => batchSel.has(op.toLowerCase()))
     .map(op => ({ operator: op, status: fleet.statuses[op.toLowerCase()], label: primary?.labels[op.toLowerCase()] }));
-  const fleetPlan = planOnboarding(primaryOwner, batchNodes, params, funds);
+  const fleetPlan = planOnboarding(primaryOwner ?? zeroAddress, batchNodes, params, funds);
 
   useEffect(() => {
     if (selected) {
@@ -132,19 +132,27 @@ const Inner = () => {
 
   // Land on the first node of the connected wallet's owner that still needs something.
   useEffect(() => {
-    if (selected || !primary || primary.operators.length === 0 || fleet.statusLoading) return;
+    if (selected || !primaryOwner || !primary || primary.operators.length === 0 || fleet.statusLoading) return;
     const pending = primary.operators.find(op => needsAttention(pillOf(primaryOwner, op)));
     setSelected({ owner: primaryOwner, operator: pending ?? primary.operators[0] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primary?.operators, fleet.statuses, fleet.statusLoading]);
 
   const addNode = (op: Address, label: string) => {
+    if (!primaryOwner) return;
     fleet.addManual(primaryOwner, op);
     if (label) fleet.setLabel(primaryOwner, op, label);
     setSelected({ owner: primaryOwner, operator: op });
     setTimeout(() => wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
+  // No wallet and nothing tracked yet: the public landing, with the add row so tracking needs no wallet.
+  if (!connected && owners.length === 0)
+    return (
+      <ConnectGate>
+        <AddOwnerRow />
+      </ConnectGate>
+    );
   if (paramsError && !params)
     return (
       <main className="if-main">
@@ -165,6 +173,9 @@ const Inner = () => {
   return (
     <main className="if-main" style={{ gap: 28 }}>
       {connected && !onMainnet && <Note kind="warn">Switch the wallet to Ethereum mainnet; writes are disabled.</Note>}
+      {!connected && (
+        <Note>Reading without a wallet. Connect a bond owner to bond, register or buy tickets for its nodes.</Note>
+      )}
 
       <FleetToolbar lastScan={fleet.lastScan} isDiscovering={fleet.isDiscovering} refetch={fleet.refetch} />
 
@@ -200,7 +211,7 @@ const Inner = () => {
       })}
 
       <div className="if-fleet-adds">
-        <AddNodeRow owner={primaryOwner} onAdd={addNode} />
+        {primaryOwner && <AddNodeRow owner={primaryOwner} onAdd={addNode} />}
         <AddOwnerRow />
       </div>
 

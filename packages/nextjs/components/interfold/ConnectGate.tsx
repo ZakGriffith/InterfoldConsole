@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { NetworkPulse } from "./NetworkPulse";
 import { ParamsStrip } from "./ParamsStrip";
 import { AddressLink, Field, Note } from "./ui";
@@ -10,19 +10,23 @@ import { useEnsAddress } from "wagmi";
 import { LINKS } from "~~/utils/interfold/contracts";
 import { safeNormalize, toChecksum } from "~~/utils/interfold/format";
 
-/** Public landing: nothing about any bond owner is shown until a wallet connects. */
-export const ConnectGate = () => {
+/**
+ * Public landing: nothing about any bond owner is shown until someone connects a wallet or types
+ * the bond owners to follow (`children` is that add row).
+ */
+export const ConnectGate = ({ children }: { children?: ReactNode }) => {
   const { openConnectModal } = useConnectModal();
   return (
     <main className="if-main">
       <div className="if-guide">
         <header className="if-guide__head">
           <div className="if-eyebrow">Ciphernode Console</div>
-          <h1 className="if-guide__title">Connect a wallet to see its ciphernodes.</h1>
+          <h1 className="if-guide__title">Connect a wallet, or list the bond owners to follow.</h1>
           <p className="if-guide__lede">
             Bond, register, buy tickets, monitor and exit Interfold ciphernodes from the wallet that funds them,
-            typically a Safe: open this page as a Safe App inside Safe{"{Wallet}"} or pair through WalletConnect. To set
-            up your own node without connecting anything, use the Set up a node tab.
+            typically a Safe: open this page as a Safe App inside Safe{"{Wallet}"} or pair through WalletConnect. Or
+            type any bond owner below to watch its nodes read-only, no wallet needed. To set up your own node, use the
+            Set up a node tab.
           </p>
         </header>
         <div className="if-actions">
@@ -33,6 +37,7 @@ export const ConnectGate = () => {
             Operator docs <span className="if-btn__arrow">→</span>
           </a>
         </div>
+        {children}
         <NetworkPulse />
         <ParamsStrip />
       </div>
