@@ -1713,3 +1713,6 @@
   flex-direction: column;
   gap: 12px;
 }
+.if-th-link--on {
+  color: var(--if-accent-deep);
+}

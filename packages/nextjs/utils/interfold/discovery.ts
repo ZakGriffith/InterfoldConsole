@@ -55,3 +55,42 @@ export const discoverOperators = async (publicClient: PublicClient, owner: Addre
   ]);
   return { events: ev.ops, safe, logsFailed: ev.failed };
 };
+
+/**
+ * Every operator that ever set a bond owner, network-wide (unfiltered BondOwnerSet logs). The
+ * current bondOwnerOf, read afterwards, says who funds each one today.
+ */
+export const discoverAllOperators = async (
+  publicClient: PublicClient,
+): Promise<{ operators: Address[]; logsFailed: boolean }> => {
+  const latest = await publicClient.getBlockNumber();
+  const getLogs = (fromBlock: bigint, toBlock: bigint) =>
+    publicClient.getLogs({ address: REGISTRY.address, event: BOND_OWNER_SET, fromBlock, toBlock });
+  const collect = (logs: { args: { operator?: Address } }[]) => {
+    const seen = new Set<string>();
+    const out: Address[] = [];
+    for (const l of logs) {
+      const op = l.args.operator;
+      if (op && !seen.has(op.toLowerCase())) {
+        seen.add(op.toLowerCase());
+        out.push(op);
+      }
+    }
+    return out;
+  };
+  try {
+    return { operators: collect(await getLogs(REGISTRY_DEPLOYED_ON_BLOCK, latest)), logsFailed: false };
+  } catch {
+    /* wide range refused: chunk */
+  }
+  try {
+    const logs = [];
+    for (let from = REGISTRY_DEPLOYED_ON_BLOCK; from <= latest; from += CHUNK) {
+      const to = from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest;
+      logs.push(...(await getLogs(from, to)));
+    }
+    return { operators: collect(logs), logsFailed: false };
+  } catch {
+    return { operators: [], logsFailed: true };
+  }
+};

@@ -5,6 +5,7 @@ import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
 import { ConnectGate } from "./ConnectGate";
 import { AddNodeRow, FleetNotes, FleetTable, FleetToolbar, batchable, needsAttention, statusPill } from "./FleetTable";
+import { NetworkOwners } from "./NetworkOwners";
 import { OperatorWizard } from "./OperatorWizard";
 import { PeerIdCard } from "./PeerIdCard";
 import { Empty, Field, Loader, Note } from "./ui";
@@ -151,6 +152,7 @@ const Inner = () => {
     return (
       <ConnectGate>
         <AddOwnerRow />
+        <NetworkOwners />
       </ConnectGate>
     );
   if (paramsError && !params)
@@ -237,6 +239,8 @@ const Inner = () => {
           <Empty>Select a node above, or add one, to open its guide.</Empty>
         )}
       </div>
+
+      <NetworkOwners />
 
       <FleetNotes operators={allOperators} labels={allLabels} logsFailed={fleet.sections.some(s => s.logsFailed)} />
     </main>
