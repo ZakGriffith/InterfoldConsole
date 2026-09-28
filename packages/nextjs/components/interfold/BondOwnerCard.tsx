@@ -26,15 +26,7 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
   const { data: f } = useOwnerFunds(s.owner);
 
   const isConnectedOwner = sameAddr(connected, s.owner);
-  const conn =
-    connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "Safe via WalletConnect" : "plain wallet";
-  const relation = !primary
-    ? isContract
-      ? "Safe · read-only from this wallet"
-      : "read-only from this wallet"
-    : ownerSource === "override"
-      ? "viewing"
-      : "owner of the connected node";
+  const via = connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "WalletConnect" : undefined;
 
   return (
     <section className="if-owner">
@@ -45,11 +37,8 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
         <div className="if-actions" style={{ gap: 8 }}>
           {ens && <span className="if-owner__name">{ens}</span>}
           <AddressLink address={s.owner} />
-          {isConnectedOwner ? (
-            <Badge kind={isContract ? "open" : "muted"}>connected · {conn}</Badge>
-          ) : (
-            <Badge kind="muted">{relation}</Badge>
-          )}
+          <Badge kind={isContract ? "open" : "muted"}>{code === undefined ? "…" : isContract ? "Safe" : "EOA"}</Badge>
+          {isConnectedOwner && <Badge kind="published">connected{via ? ` · ${via}` : ""}</Badge>}
           {primary && ownerSource === "override" && (
             <button
               type="button"
