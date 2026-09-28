@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { type Address, zeroAddress } from "viem";
+import { type Address, getAddress, zeroAddress } from "viem";
 import { useBytecode, useReadContract } from "wagmi";
 import { ConnectGate, OwnerPrompt } from "~~/components/interfold/ConnectGate";
 import { Loader } from "~~/components/interfold/ui";
@@ -11,7 +11,7 @@ import { type RegistryParams, useRegistryParams } from "~~/hooks/interfold/useRe
 import { CHAIN_ID, REGISTRY } from "~~/utils/interfold/contracts";
 import { isContractCode, sameAddr } from "~~/utils/interfold/format";
 
-export type OwnerSource = "override" | "connected" | "operator-of-connected";
+export type OwnerSource = "override" | "connected" | "operator-of-connected" | "extra";
 
 export type ConsoleState = {
   /** Connected wallet (any mode). Always defined inside the provider: nothing renders without one. */
@@ -19,10 +19,16 @@ export type ConsoleState = {
   connMode: ConnectionMode;
   isSafe: boolean;
   onMainnet: boolean;
-  /** The bond owner whose fleet is shown and on whose behalf writes are simulated. */
+  /** The bond owner this part of the page is about: its fleet is shown and writes are simulated as it. */
   owner: Address;
   ownerSource: OwnerSource;
   setOwnerOverride: (a: Address | undefined) => void;
+  /** The owner the connection resolves to (connected wallet, its bond owner, or the typed override). */
+  primaryOwner: Address;
+  /** Every bond owner the Fleet page shows: the primary one plus any added here, in section order. */
+  owners: Address[];
+  addOwner: (a: Address) => void;
+  removeOwner: (a: Address) => void;
   /** The bond owner has code (a Safe or other smart account) vs. a plain key. Drives Safe-only UI. */
   ownerIsContract: boolean;
   /** True when the connected wallet *is* the owner on mainnet: owner-only writes may be sent. */
@@ -98,6 +104,40 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
     [overrideKey],
   );
 
+  // Extra bond owners shown as their own sections (a Safe you sign for, a second wallet), kept per connected wallet.
+  const extrasKey = acct.address ? `interfold.fleet.owners.${acct.address.toLowerCase()}` : undefined;
+  const [extras, setExtras] = useState<Address[]>([]);
+  useEffect(() => {
+    try {
+      const raw = extrasKey ? localStorage.getItem(extrasKey) : null;
+      setExtras(raw ? (JSON.parse(raw) as string[]).map(a => getAddress(a)) : []);
+    } catch {
+      setExtras([]);
+    }
+  }, [extrasKey]);
+  const persistExtras = useCallback(
+    (next: Address[]) => {
+      setExtras(next);
+      try {
+        if (extrasKey) localStorage.setItem(extrasKey, JSON.stringify(next));
+      } catch {
+        /* in-memory only */
+      }
+    },
+    [extrasKey],
+  );
+  const addOwner = useCallback(
+    (a: Address) => {
+      if (extras.some(x => sameAddr(x, a))) return;
+      persistExtras([...extras, getAddress(a)]);
+    },
+    [extras, persistExtras],
+  );
+  const removeOwner = useCallback(
+    (a: Address) => persistExtras(extras.filter(x => !sameAddr(x, a))),
+    [extras, persistExtras],
+  );
+
   const { data: ownerOfConnected } = useReadContract({
     address: REGISTRY.address,
     abi: REGISTRY.abi,
@@ -158,6 +198,10 @@ export const ConsoleProvider = ({ children, gate }: { children: ReactNode; gate?
     ownerSource,
     ownerIsContract,
     setOwnerOverride,
+    primaryOwner: owner,
+    owners: [owner, ...extras.filter(a => !sameAddr(a, owner))],
+    addOwner,
+    removeOwner,
     canWriteAsOwner,
     operatorMode,
     params: params.data,
@@ -178,4 +222,29 @@ export const useConsole = (): ConsoleState => {
   const v = useContext(Ctx);
   if (!v) throw new Error("useConsole must be used inside <ConsoleProvider>");
   return v;
+};
+
+/**
+ * One Fleet section: re-provides the console state with `owner` swapped for another bond owner,
+ * so the owner strip, fleet table, wizard and action buttons below it all work unchanged.
+ * Writes stay gated on the connected wallet actually being that owner.
+ */
+export const OwnerScope = ({ owner, children }: { owner: Address; children: ReactNode }) => {
+  const parent = useConsole();
+  const funds = useOwnerFunds(owner);
+  const { data: code } = useBytecode({ address: owner, chainId: CHAIN_ID, query: { enabled: !!owner } });
+  const value = useMemo<ConsoleState>(() => {
+    if (sameAddr(owner, parent.primaryOwner)) return parent;
+    return {
+      ...parent,
+      owner,
+      ownerSource: "extra",
+      ownerIsContract: isContractCode(code),
+      canWriteAsOwner: parent.onMainnet && sameAddr(parent.connected, owner),
+      operatorMode: parent.connMode === "eoa" && !sameAddr(parent.connected, owner),
+      funds: funds.data,
+      fundsLoading: funds.isLoading,
+    };
+  }, [parent, owner, code, funds.data, funds.isLoading]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

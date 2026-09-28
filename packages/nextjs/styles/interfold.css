@@ -1684,3 +1684,18 @@
 .if-addrow--two {
   grid-template-columns: minmax(0, 1fr) auto;
 }
+
+/* Fleet page: one section per bond owner, the owner strip as its header */
+.if-fleet-section {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.if-fleet-section + .if-fleet-section {
+  padding-top: 28px;
+  border-top: 1px solid var(--if-rule);
+}
+.if-owner__name {
+  font-weight: 600;
+  color: var(--if-ink);
+}
