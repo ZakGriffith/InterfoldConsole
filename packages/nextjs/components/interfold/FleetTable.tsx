@@ -13,7 +13,7 @@ import { type OperatorSource } from "~~/hooks/interfold/useOperatorList";
 import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
 import { operatorInstructions } from "~~/utils/interfold/instructions";
 
-const LOW_ETH = parseEther("0.01");
+export const LOW_ETH = parseEther("0.01");
 
 export type StatusPill = { label: string; kind: BadgeKind };
 

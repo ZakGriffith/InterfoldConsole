@@ -1661,3 +1661,26 @@
     gap: 16px;
   }
 }
+
+/* Watch page: one table grouped by bond owner */
+.if-table tbody tr.if-row--group,
+.if-table tbody tr.if-row--quiet {
+  cursor: default;
+}
+.if-table tbody tr.if-row--group:hover,
+.if-table tbody tr.if-row--quiet:hover {
+  background: transparent;
+}
+.if-table tbody tr.if-row--group td {
+  background: var(--if-paper-3);
+  border-top: 1px solid var(--if-rule);
+  padding-top: 9px;
+  padding-bottom: 9px;
+  white-space: normal;
+}
+.if-table tbody tr.if-row--group:first-child td {
+  border-top: 0;
+}
+.if-addrow--two {
+  grid-template-columns: minmax(0, 1fr) auto;
+}

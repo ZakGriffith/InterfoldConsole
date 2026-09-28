@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type Address, getAddress, parseAbiItem } from "viem";
+import { type Address, getAddress, zeroAddress } from "viem";
 import { usePublicClient } from "wagmi";
-import { CHAIN_ID, REGISTRY, REGISTRY_DEPLOYED_ON_BLOCK } from "~~/utils/interfold/contracts";
-import { discoverOperatorsFromSafeHistory } from "~~/utils/interfold/safeDiscovery";
+import { CHAIN_ID } from "~~/utils/interfold/contracts";
+import { discoverOperators, discoveryKey } from "~~/utils/interfold/discovery";
 
 export type OperatorSource = "events" | "safe" | "manual";
 
-const BOND_OWNER_SET = parseAbiItem("event BondOwnerSet(address indexed operator, address indexed bondOwner)");
-const CHUNK = 20_000n;
 const storageKey = (owner: Address) => `interfold.operators.${owner.toLowerCase()}`;
 
 const readManual = (owner: Address): Address[] => {
@@ -50,10 +48,7 @@ const writeLabels = (owner: Address, labels: Record<string, string>) => {
 
 /**
  * Operators owned by `owner`, merged and de-duplicated from three sources:
- *  1. BondOwnerSet(operator, bondOwner = owner) logs since the registry was deployed. One wide
- *     eth_getLogs first (indexed filter => tiny response); public RPCs that refuse wide ranges
- *     fall back to 20k-block chunks.
- *  2. Safe Transaction Service: every executed Safe tx to the registry, decoded for its operator arg.
+ *  1-2. On-chain BondOwnerSet logs and Safe history (see utils/interfold/discovery.ts).
  *  3. Manual entries persisted in localStorage["interfold.operators.<owner>"].
  */
 export const useOperatorList = (owner: Address | undefined) => {
@@ -82,48 +77,11 @@ export const useOperatorList = (owner: Address | undefined) => {
   );
 
   const discovery = useQuery({
-    queryKey: ["interfold", "operators", owner],
+    queryKey: discoveryKey(owner ?? zeroAddress),
     enabled: !!owner && !!publicClient,
     staleTime: 60_000,
     refetchInterval: 120_000,
-    queryFn: async () => {
-      if (!owner || !publicClient) return { events: [] as Address[], safe: [] as Address[], logsFailed: false };
-      const latest = await publicClient.getBlockNumber();
-
-      const fromEvents = async (): Promise<{ ops: Address[]; failed: boolean }> => {
-        const getLogs = (fromBlock: bigint, toBlock: bigint) =>
-          publicClient.getLogs({
-            address: REGISTRY.address,
-            event: BOND_OWNER_SET,
-            args: { bondOwner: owner },
-            fromBlock,
-            toBlock,
-          });
-        try {
-          const logs = await getLogs(REGISTRY_DEPLOYED_ON_BLOCK, latest);
-          return { ops: logs.map(l => l.args.operator!).filter(Boolean), failed: false };
-        } catch {
-          /* wide range refused: chunk */
-        }
-        try {
-          const ops: Address[] = [];
-          for (let from = REGISTRY_DEPLOYED_ON_BLOCK; from <= latest; from += CHUNK) {
-            const to = from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest;
-            const logs = await getLogs(from, to);
-            ops.push(...logs.map(l => l.args.operator!).filter(Boolean));
-          }
-          return { ops, failed: false };
-        } catch {
-          return { ops: [], failed: true };
-        }
-      };
-
-      const [ev, safe] = await Promise.all([
-        fromEvents(),
-        discoverOperatorsFromSafeHistory(owner, REGISTRY.address, REGISTRY.abi as any),
-      ]);
-      return { events: ev.ops, safe, logsFailed: ev.failed };
-    },
+    queryFn: () => discoverOperators(publicClient!, owner!),
   });
 
   const { operators, sources } = useMemo(() => {
