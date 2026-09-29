@@ -233,7 +233,7 @@ export const FleetTable = ({
                 </td>
                 {probe.report && (
                   <td title={sw.title}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <div className="if-cell-inline">
                       <Badge kind={sw.kind}>{sw.label}</Badge>
                       {sw.sub && <span className="if-stat__sub">{sw.sub}</span>}
                     </div>
@@ -241,7 +241,7 @@ export const FleetTable = ({
                 )}
                 {showE3 && (
                   <td title={duty.title}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <div className="if-cell-inline">
                       <Badge kind={duty.kind}>{duty.label}</Badge>
                       {duty.sub && <span className="if-stat__sub">{duty.sub}</span>}
                     </div>
