@@ -15,7 +15,8 @@ const fmtDay = (unix: number) => new Date(unix * 1000).toLocaleDateString(undefi
 export const UnlockStrip = ({ owner }: { owner: Address }) => {
   const { data: u } = useFoldUnlock(owner);
   const { funds } = useConsole();
-  if (!u || u.total === 0n) return null;
+  // Nothing to say once everything has unlocked.
+  if (!u || u.total === 0n || u.lockedNow === 0n) return null;
 
   const done = u.lockedNow === 0n;
   const next30 = u.unlockedIn30d - u.unlockedNow;
