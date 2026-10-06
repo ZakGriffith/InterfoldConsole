@@ -57,7 +57,12 @@ export const softwarePill = (
         "Not monitored yet. The operator registers the node's peer ID on the Set up a node page (interfold net get-peer-id).",
     };
   if (stale)
-    return { label: "probe stale", kind: "warn", sub: ago(n.checkedAt), title: "The GitHub probe has stopped running" };
+    return {
+      label: "probe stale",
+      kind: "warn",
+      sub: ago(n.checkedAt),
+      title: `Last probe ${ago(n.checkedAt)}. GitHub is running the scheduled probe late, so this result is old; the node itself may be fine.`,
+    };
   if (!n.ok && report.bootstrap.ok === false && !report.dhtPeers && !report.seeds?.ok)
     return {
       label: "probe offline",
@@ -280,7 +285,7 @@ export const FleetToolbar = ({
   refetch: () => void;
 }) => {
   const probe = useNodeProbe();
-  const probeRun = useProbeRun();
+  const probeRun = useProbeRun(probe.report?.generatedAt);
   return (
     <div className="if-actions" style={{ justifyContent: "flex-end" }}>
       <span className="if-stat__sub">{lastScan ? `scanned ${new Date(lastScan).toLocaleTimeString()}` : ""}</span>
@@ -331,16 +336,17 @@ export const FleetNotes = ({
     <>
       {operators.length > 0 && probe.report && (
         <p className="if-stat__sub" style={{ margin: 0 }}>
-          Software column: every 10 minutes a probe looks each registered node up on the peer network and reads the
-          version it announces. &quot;No peer ID&quot; means the node is not registered yet; click the row for how. Last
-          probe {ago(probe.report.generatedAt)}
+          Software column: a probe scheduled every 10 minutes looks each registered node up on the peer network and
+          reads the version it announces. &quot;No peer ID&quot; means the node is not registered yet; click the row for
+          how. Last probe {ago(probe.report.generatedAt)}
           {probe.report.latestRelease ? `, latest release ${probe.report.latestRelease}` : ""}
           {probe.report.bootstrap.ok === false
             ? probe.report.seeds?.ok
               ? `. The Interfold bootstrap peer did not answer; the probe joined the network through ${probe.report.seeds.ok} node${probe.report.seeds.ok === 1 ? "" : "s"} it reached last time.`
               : ". The probe could not join the peer network at all this run, so the column says nothing about the nodes."
             : "."}
-          {probe.stale && " The probe has not run for a while; check the workflow on GitHub."}
+          {probe.stale &&
+            " GitHub is running the scheduled probe hours late, so results older than 45 minutes are marked stale; the nodes themselves may be fine."}
         </p>
       )}
       {showE3 && e3.data && <E3History activity={e3.data} paused={e3.paused} operators={operators} labels={labels} />}

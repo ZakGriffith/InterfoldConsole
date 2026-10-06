@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 /** One row of probe.json, written by .github/workflows/probe.yaml from probe/probe.mjs. */
@@ -52,12 +52,41 @@ const PROBE_URL =
 
 type Fetched = { report: ProbeReport; ageMs: number };
 
+/**
+ * Set when "Re-probe now" dispatched a run: the report's generatedAt at that moment, so the report
+ * query can poll fast (with a per-request cache buster) until a newer file shows up. Shared across
+ * every component using these hooks.
+ */
+type Awaiting = { since: number; baseline?: string };
+let awaiting: Awaiting | undefined;
+const listeners = new Set<() => void>();
+const setAwaiting = (next: Awaiting | undefined) => {
+  awaiting = next;
+  listeners.forEach(l => l());
+};
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => void listeners.delete(l);
+};
+const useAwaiting = () =>
+  useSyncExternalStore(
+    subscribe,
+    () => awaiting,
+    () => undefined,
+  );
+/** Give up waiting for a fresh report after this long (the run itself takes about 40 s). */
+const AWAIT_MAX_MS = 3 * 60_000;
+
 const fetchReport = async (): Promise<Fetched> => {
-  // The query string defeats the raw.githubusercontent CDN cache (5 min) once a minute.
+  // The query string defeats the raw.githubusercontent CDN cache (5 min): once a minute normally,
+  // every request while a manual run is awaited.
   const now = Date.now();
-  const r = await fetch(`${PROBE_URL}?t=${Math.floor(now / 60_000)}`, { cache: "no-store" });
+  const t = awaiting ? now : Math.floor(now / 60_000);
+  const r = await fetch(`${PROBE_URL}?t=${t}`, { cache: "no-store" });
   if (!r.ok) throw new Error(`probe.json ${r.status}`);
   const report = (await r.json()) as ProbeReport;
+  if (awaiting && (report.generatedAt !== awaiting.baseline || now - awaiting.since > AWAIT_MAX_MS))
+    setAwaiting(undefined);
   return { report, ageMs: now - new Date(report.generatedAt).getTime() };
 };
 
@@ -66,11 +95,14 @@ const fetchReport = async (): Promise<Fetched> => {
  * 10 minutes (nothing runs on the node). Keyed by lower-cased operator address.
  */
 export const useNodeProbe = () => {
+  const waiting = !!useAwaiting();
   const q = useQuery({
     queryKey: ["interfold", "node-probe"],
     queryFn: fetchReport,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    // Poll every 10 s (even in a background tab) while a manual run is awaited.
+    refetchInterval: waiting ? 10_000 : 60_000,
+    refetchIntervalInBackground: waiting,
+    staleTime: waiting ? 0 : 30_000,
     retry: 1,
   });
   const report = q.data?.report;
@@ -100,10 +132,10 @@ export const ago = (iso: string | undefined) => {
 
 /**
  * The "Re-probe now" button: POST /api/probe/run dispatches the GitHub workflow. Hidden when the
- * deployment has no PROBE_DISPATCH_TOKEN. The run takes about 40 s; the report query above picks
- * the new probe.json up on its next minute tick.
+ * deployment has no PROBE_DISPATCH_TOKEN. The run takes about 40 s; while it is awaited the report
+ * query above polls every 10 s and says "queued" until a newer probe.json arrives.
  */
-export const useProbeRun = () => {
+export const useProbeRun = (currentGeneratedAt?: string) => {
   const enabled = useQuery({
     queryKey: ["interfold", "probe-run-enabled"],
     queryFn: async () => {
@@ -119,20 +151,14 @@ export const useProbeRun = () => {
       const body = (await r.json().catch(() => ({}))) as { error?: string };
       if (!r.ok) throw new Error(body.error ?? `probe run ${r.status}`);
     },
-    onSuccess: () => setQueued(true),
+    onSuccess: () => setAwaiting({ since: Date.now(), baseline: currentGeneratedAt }),
   });
-  // The workflow takes about 40 s and the report refetches once a minute: say "queued" for 90 s.
-  const [queued, setQueued] = useState(false);
-  useEffect(() => {
-    if (!queued) return;
-    const t = setTimeout(() => setQueued(false), 90_000);
-    return () => clearTimeout(t);
-  }, [queued]);
+  const queued = !!useAwaiting();
   return {
     enabled: enabled.data ?? false,
     run: () => run.mutate(),
     isPending: run.isPending,
-    /** A dispatch was accepted in the last 90 s. */
+    /** A dispatch was accepted and no newer report has arrived yet (gives up after 3 min). */
     queued,
     error: run.error ?? undefined,
   };
