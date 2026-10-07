@@ -5,7 +5,7 @@ import { E3History, e3Pill } from "./E3History";
 import { AddressLink, Badge, type BadgeKind, Empty, Note } from "./ui";
 import { type Address, parseEther } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
-import { useE3Activity } from "~~/hooks/interfold/useE3Activity";
+import { E3_WINDOW_DAYS, useE3Activity } from "~~/hooks/interfold/useE3Activity";
 import { type OperatorSource } from "~~/hooks/interfold/useFleet";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type ProbeNode, type ProbeReport, ago, useNodeProbe, useProbeRun } from "~~/hooks/interfold/useNodeProbe";
@@ -228,7 +228,9 @@ export const FleetTable = ({
               </th>
             )}
             {showE3 && (
-              <th title="Committees the registry drafted this node into, from the Interfold contract's E3 events">
+              <th
+                title={`Committees this node sat on in the last ${E3_WINDOW_DAYS} days (completed / finished), from the Interfold contract's E3 events. Hover a cell for the list.`}
+              >
                 E3 duty
               </th>
             )}

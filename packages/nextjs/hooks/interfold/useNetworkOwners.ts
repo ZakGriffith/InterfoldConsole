@@ -31,7 +31,8 @@ export const useNetworkOwners = () => {
     queryFn: () => discoverAllOperators(publicClient!),
   });
   const operators = useMemo(() => q.data?.operators ?? [], [q.data]);
-  const fleet = useFleetStatus(operators);
+  // The whole network's status is a ranking, not something to act on: refresh it with discovery.
+  const fleet = useFleetStatus(operators, 120_000);
 
   const owners = useMemo<NetworkOwner[]>(() => {
     const by: Record<string, NetworkOwner> = {};

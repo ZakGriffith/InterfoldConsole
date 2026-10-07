@@ -70,7 +70,12 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 const CHUNK = 20_000n;
 /** Timestamps are one eth_getBlock each; only the newest E3s get them. */
 const DATED = 25;
+/** How far back the scan looks. Keeps the badge about recent duty and the getLogs range constant. */
+export const E3_WINDOW_DAYS = 30;
+const WINDOW_BLOCKS = BigInt(E3_WINDOW_DAYS) * 7_200n;
 const COUNTER_MASK = (1n << 96n) - 1n;
+/** Block timestamps never change: fetched once per page load, not once per scan. */
+const blockStamps = new Map<bigint, number>();
 
 export type E3Activity = {
   e3s: E3[];
@@ -82,6 +87,8 @@ export type E3Activity = {
 
 const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClient>>): Promise<E3Activity> => {
   const latest = await client.getBlockNumber();
+  const windowStart = latest > WINDOW_BLOCKS ? latest - WINDOW_BLOCKS : 0n;
+  const since = (deployed: bigint) => (deployed > windowStart ? deployed : windowStart);
 
   // One wide eth_getLogs first; public RPCs that cap the range fall back to chunks.
   const scan = async <T>(get: (from: bigint, to: bigint) => Promise<T[]>, start: bigint): Promise<T[]> => {
@@ -102,15 +109,17 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
     scan(
       (fromBlock, toBlock) =>
         client.getLogs({ address: INTERFOLD.address, events: [STAGE_CHANGED, FAILED, PAUSED_SET], fromBlock, toBlock }),
-      INTERFOLD.deployedOnBlock,
+      since(INTERFOLD.deployedOnBlock),
     ),
     scan(
       (fromBlock, toBlock) => client.getLogs({ address: REGISTRY.address, event: OBLIGATION, fromBlock, toBlock }),
-      REGISTRY_DEPLOYED_ON_BLOCK,
+      since(REGISTRY_DEPLOYED_ON_BLOCK),
     ),
   ]);
 
   const byId = new Map<bigint, E3>();
+  // E3s requested before the window whose later stages fall inside it: dropped, their story is incomplete.
+  const partial = new Set<bigint>();
   let pausedSinceBlock: bigint | undefined;
   for (const log of lifecycle) {
     if (log.eventName === "RequestsPausedSet") {
@@ -131,6 +140,7 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
         candidates: [],
       };
       byId.set(id, e3);
+      if (log.eventName !== "E3StageChanged" || log.args.previousStage !== 0) partial.add(id);
     }
     if (log.eventName === "E3StageChanged") {
       e3.stage = log.args.newStage!;
@@ -179,7 +189,9 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
     if (op !== ZERO && !e3.committee.includes(op)) e3.committee.push(op);
   }
 
-  const e3s = [...byId.values()].sort((a, b) => (a.requestBlock < b.requestBlock ? 1 : -1));
+  const e3s = [...byId.values()]
+    .filter(e3 => !partial.has(e3.id))
+    .sort((a, b) => (a.requestBlock < b.requestBlock ? 1 : -1));
 
   const blocks = new Set<bigint>();
   for (const e3 of e3s.slice(0, DATED)) {
@@ -187,16 +199,18 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
     if (e3.endBlock !== undefined) blocks.add(e3.endBlock);
   }
   if (pausedSinceBlock !== undefined) blocks.add(pausedSinceBlock);
-  const stamps = new Map<bigint, number>();
+  const stamps = blockStamps;
   await Promise.all(
-    [...blocks].map(async b => {
-      try {
-        const blk = await client.getBlock({ blockNumber: b });
-        stamps.set(b, Number(blk.timestamp));
-      } catch {
-        /* the row shows the block number instead */
-      }
-    }),
+    [...blocks]
+      .filter(b => !stamps.has(b))
+      .map(async b => {
+        try {
+          const blk = await client.getBlock({ blockNumber: b });
+          stamps.set(b, Number(blk.timestamp));
+        } catch {
+          /* the row shows the block number instead */
+        }
+      }),
   );
   for (const e3 of e3s) {
     e3.requestedAt = stamps.get(e3.requestBlock);
@@ -212,9 +226,9 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
 };
 
 /**
- * Every E3 the Interfold contract has run on mainnet, with the committee the registry drafted for
- * each, so a bond owner can see which of its nodes took part and how the E3 ended. Public; the
- * event scan runs once a minute. Per-node behavior inside an E3 (who sent a DKG share) is not on
+ * Every E3 the Interfold contract ran on mainnet in the last E3_WINDOW_DAYS, with the committee the
+ * registry drafted for each, so a bond owner can see which of its nodes took part and how the E3
+ * ended. Public; the event scan runs once a minute. Per-node behavior inside an E3 (who sent a DKG share) is not on
  * chain, so the most this can say is "in the committee of an E3 that failed at stage X".
  */
 export const useE3Activity = () => {

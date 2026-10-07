@@ -63,10 +63,20 @@ const pair = (v: unknown): [bigint, bigint] => {
 };
 
 /**
- * Status for every operator in one multicall (11 registry views + Multicall3.getEthBalance per row),
- * polled at scaffoldConfig.pollingInterval. Keyed by lower-cased operator address.
+ * Calldata per multicall request. viem's default (1 KB, about 28 calls) turned a 95-node refresh into
+ * ~40 RPC requests; the RPC counts one request per multicall whatever it holds, so pack them.
  */
-export const useFleetStatus = (operators: readonly Address[]) => {
+const BATCH_BYTES = 32_768;
+
+/**
+ * Status for every operator (11 registry views + Multicall3.getEthBalance per row), packed into as
+ * few multicalls as fit, polled at `refetchInterval` (default scaffoldConfig.pollingInterval).
+ * Keyed by lower-cased operator address.
+ */
+export const useFleetStatus = (
+  operators: readonly Address[],
+  refetchInterval: number = scaffoldConfig.pollingInterval,
+) => {
   const contracts = useMemo(
     () =>
       operators.flatMap(op => [
@@ -84,7 +94,8 @@ export const useFleetStatus = (operators: readonly Address[]) => {
 
   const q = useReadContracts({
     contracts: contracts as any,
-    query: { enabled: operators.length > 0, refetchInterval: scaffoldConfig.pollingInterval },
+    batchSize: BATCH_BYTES,
+    query: { enabled: operators.length > 0, refetchInterval, staleTime: refetchInterval / 2 },
   });
 
   const statuses = useMemo(() => {

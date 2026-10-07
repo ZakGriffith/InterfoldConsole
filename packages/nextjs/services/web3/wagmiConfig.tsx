@@ -39,6 +39,9 @@ export const wagmiConfig = createConfig({
     return createClient({
       chain,
       transport: fallback(rpcFallbacks),
+      // Every eth_call issued in the same tick (ENS lookups, single reads) goes out as one
+      // Multicall3 request. The RPC counts requests, not calls, so this is most of the budget.
+      batch: { multicall: { batchSize: 32_768, wait: 16 } },
       ...(chain.id !== (hardhat as Chain).id
         ? {
             pollingInterval: scaffoldConfig.pollingInterval,
