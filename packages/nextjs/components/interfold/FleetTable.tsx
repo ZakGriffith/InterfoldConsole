@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { E3History, e3Pill } from "./E3History";
-import { AddressLink, Badge, type BadgeKind, CopyButton, Empty, Field, Note } from "./ui";
+import { AddressLink, Badge, type BadgeKind, Empty, Note } from "./ui";
 import { type Address, parseEther } from "viem";
-import { useEnsAddress, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useE3Activity } from "~~/hooks/interfold/useE3Activity";
 import { type OperatorSource } from "~~/hooks/interfold/useFleet";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type ProbeNode, type ProbeReport, ago, useNodeProbe, useProbeRun } from "~~/hooks/interfold/useNodeProbe";
-import { fmtEth, fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfold/format";
-import { operatorInstructions } from "~~/utils/interfold/instructions";
+import { fmtEth, fmtTokens, sameAddr } from "~~/utils/interfold/format";
 
 export const LOW_ETH = parseEther("0.01");
 
@@ -105,6 +103,53 @@ export const needsAttention = (pill: StatusPill) => pill.kind !== "published";
 /** The bond owner can act on this node right now (authorized, no exit, something left to do). */
 export const batchable = (pill: StatusPill) => pill.kind === "working";
 
+/** The node's label, edited in place: click to type, Enter or blur saves, Escape cancels. */
+const RowLabel = ({ value, onSave }: { value: string; onSave: (label: string) => void }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (editing) ref.current?.focus();
+  }, [editing]);
+  const commit = () => {
+    setEditing(false);
+    if (draft.trim() !== value) onSave(draft.trim());
+  };
+  if (editing)
+    return (
+      <input
+        ref={ref}
+        className="if-field__input if-row-label__input"
+        value={draft}
+        placeholder="Label this node"
+        onClick={e => e.stopPropagation()}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") {
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  return (
+    <button
+      type="button"
+      className={`if-row-label${value ? "" : " if-row-label--empty"}`}
+      title="Edit label (kept in this browser)"
+      onClick={e => {
+        e.stopPropagation();
+        setDraft(value);
+        setEditing(true);
+      }}
+    >
+      {value || "+ label"}
+    </button>
+  );
+};
+
 type TableProps = {
   owner: Address;
   operators: Address[];
@@ -118,6 +163,7 @@ type TableProps = {
   onToggleBatch: (a: Address) => void;
   onSelectAllBatchable: () => void;
   removeManual: (a: Address) => void;
+  setLabel: (a: Address, label: string) => void;
   isDiscovering: boolean;
 };
 
@@ -135,6 +181,7 @@ export const FleetTable = ({
   onToggleBatch,
   onSelectAllBatchable,
   removeManual,
+  setLabel,
   isDiscovering,
 }: TableProps) => {
   const { params: p } = useConsole();
@@ -214,9 +261,10 @@ export const FleetTable = ({
                 )}
                 <td>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    {labels[k] && <span style={{ fontWeight: 600 }}>{labels[k]}</span>}
+                    {labels[k] && <RowLabel value={labels[k]} onSave={l => setLabel(op, l)} />}
                     <span className="if-actions" style={{ gap: 6 }}>
                       <AddressLink address={op} />
+                      {!labels[k] && <RowLabel value="" onSave={l => setLabel(op, l)} />}
                       {manualOnly && (
                         <button
                           type="button"
@@ -357,65 +405,5 @@ export const FleetNotes = ({
         </Note>
       )}
     </>
-  );
-};
-
-/** Add a node to one owner's list by operator key, with an optional label. */
-export const AddNodeRow = ({ owner, onAdd }: { owner: Address; onAdd: (a: Address, label: string) => void }) => {
-  const { params: p } = useConsole();
-  const { data: ownerEns } = useEnsName({ address: owner, chainId: 1 });
-  const [input, setInput] = useState("");
-  const [label, setLabel] = useState("");
-  const ens = input.trim().toLowerCase().endsWith(".eth") ? input.trim() : undefined;
-  const { data: ensAddr, isLoading } = useEnsAddress({
-    name: safeNormalize(ens),
-    chainId: 1,
-    query: { enabled: !!ens },
-  });
-  const resolved = toChecksum(input.trim()) ?? (ensAddr ? toChecksum(ensAddr) : null);
-  const isOwner = !!resolved && sameAddr(resolved, owner);
-  const invalid = (input.trim() !== "" && !resolved && !isLoading) || isOwner;
-
-  const add = () => {
-    if (!resolved || isOwner) return;
-    onAdd(resolved, label.trim());
-    setInput("");
-    setLabel("");
-  };
-
-  return (
-    <div className="if-addrow">
-      <Field
-        label="Add a node (operator key or ENS)"
-        value={input}
-        onChange={setInput}
-        placeholder="0x…"
-        invalid={invalid}
-        hint={
-          isOwner
-            ? "That is the bond owner itself; the operator key is the node hot wallet."
-            : invalid
-              ? "Not a valid address."
-              : undefined
-        }
-      />
-      <Field
-        label="Label (optional)"
-        value={label}
-        onChange={setLabel}
-        placeholder="e.g. Alice / hetzner-1"
-        mono={false}
-      />
-      <div className="if-addrow__actions">
-        <button type="button" className="if-btn if-btn--primary" disabled={!resolved || isOwner} onClick={add}>
-          Add node
-        </button>
-        <CopyButton
-          text={operatorInstructions(owner, p, ownerEns ?? undefined)}
-          label="Copy instructions for a node operator"
-          className="if-btn--sm"
-        />
-      </div>
-    </div>
   );
 };

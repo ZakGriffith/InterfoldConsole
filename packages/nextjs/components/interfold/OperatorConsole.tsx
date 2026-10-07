@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BatchPanel } from "./BatchPanel";
 import { BondOwnerCard } from "./BondOwnerCard";
 import { ConnectGate } from "./ConnectGate";
-import { AddNodeRow, FleetNotes, FleetTable, FleetToolbar, batchable, needsAttention, statusPill } from "./FleetTable";
+import { FleetNotes, FleetTable, FleetToolbar, batchable, statusPill } from "./FleetTable";
 import { NetworkOwners } from "./NetworkOwners";
-import { OperatorWizard } from "./OperatorWizard";
-import { PeerIdCard } from "./PeerIdCard";
+import { NodeModal } from "./NodeModal";
 import { Empty, Field, Loader, Note } from "./ui";
 import { type Address, zeroAddress } from "viem";
 import { useEnsAddress } from "wagmi";
-import { ConsoleProvider, OwnerScope, useConsole } from "~~/hooks/interfold/ConsoleContext";
+import { ConsoleProvider, useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useFleet } from "~~/hooks/interfold/useFleet";
 import { planOnboarding } from "~~/utils/interfold/batch";
 import { REGISTRY } from "~~/utils/interfold/contracts";
@@ -83,7 +82,6 @@ const Inner = () => {
   const fleet = useFleet(owners);
   const [selected, setSelected] = useState<Selection>();
   const [batchSel, setBatchSel] = useState<Set<string>>(new Set());
-  const wizardRef = useRef<HTMLDivElement>(null);
 
   const primary = fleet.sections.find(s => sameAddr(s.owner, primaryOwner));
   const anyOperators = fleet.sections.some(s => s.operators.length > 0);
@@ -131,22 +129,6 @@ const Inner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fleet.sections]);
 
-  // Land on the first node of the connected wallet's owner that still needs something.
-  useEffect(() => {
-    if (selected || !primaryOwner || !primary || primary.operators.length === 0 || fleet.statusLoading) return;
-    const pending = primary.operators.find(op => needsAttention(pillOf(primaryOwner, op)));
-    setSelected({ owner: primaryOwner, operator: pending ?? primary.operators[0] });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [primary?.operators, fleet.statuses, fleet.statusLoading]);
-
-  const addNode = (op: Address, label: string) => {
-    if (!primaryOwner) return;
-    fleet.addManual(primaryOwner, op);
-    if (label) fleet.setLabel(primaryOwner, op, label);
-    setSelected({ owner: primaryOwner, operator: op });
-    setTimeout(() => wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-  };
-
   // No wallet and nothing tracked yet: the public landing, with the add row so tracking needs no wallet.
   if (!connected && owners.length === 0)
     return (
@@ -185,22 +167,25 @@ const Inner = () => {
         const isPrimary = sameAddr(s.owner, primaryOwner);
         return (
           <section key={s.owner} className="if-fleet-section">
-            <BondOwnerCard section={s} primary={isPrimary} onRemove={isPrimary ? undefined : removeOwner} />
-            <FleetTable
-              owner={s.owner}
-              operators={s.operators}
-              sources={s.sources}
-              labels={s.labels}
-              statuses={fleet.statuses}
-              selected={selected && sameAddr(selected.owner, s.owner) ? selected.operator : undefined}
-              onSelect={op => setSelected({ owner: s.owner, operator: op })}
-              batchEnabled={isPrimary && batchEnabled}
-              batchSelection={batchSel}
-              onToggleBatch={toggleBatch}
-              onSelectAllBatchable={selectAllBatchable}
-              removeManual={op => fleet.removeManual(s.owner, op)}
-              isDiscovering={s.isDiscovering}
-            />
+            <div className="if-fleet-card">
+              <BondOwnerCard section={s} primary={isPrimary} onRemove={isPrimary ? undefined : removeOwner} />
+              <FleetTable
+                owner={s.owner}
+                operators={s.operators}
+                sources={s.sources}
+                labels={s.labels}
+                statuses={fleet.statuses}
+                selected={selected && sameAddr(selected.owner, s.owner) ? selected.operator : undefined}
+                onSelect={op => setSelected({ owner: s.owner, operator: op })}
+                batchEnabled={isPrimary && batchEnabled}
+                batchSelection={batchSel}
+                onToggleBatch={toggleBatch}
+                onSelectAllBatchable={selectAllBatchable}
+                removeManual={op => fleet.removeManual(s.owner, op)}
+                setLabel={(op, l) => fleet.setLabel(s.owner, op, l)}
+                isDiscovering={s.isDiscovering}
+              />
+            </div>
             {isPrimary && batchEnabled && batchNodes.length > 0 && (
               <BatchPanel
                 title={`Bond, register and ticket ${batchNodes.length} node${batchNodes.length === 1 ? "" : "s"} in one transaction`}
@@ -212,33 +197,19 @@ const Inner = () => {
         );
       })}
 
-      <div className="if-fleet-adds">
-        {primaryOwner && <AddNodeRow owner={primaryOwner} onAdd={addNode} />}
-        <AddOwnerRow />
-      </div>
+      <AddOwnerRow />
 
-      <div ref={wizardRef} style={{ scrollMarginTop: 80 }}>
-        {selected && selectedSection ? (
-          <OwnerScope owner={selected.owner}>
-            <OperatorWizard
-              operator={selected.operator}
-              status={fleet.statuses[selected.operator.toLowerCase()]}
-              statusLoading={fleet.statusLoading}
-              label={selectedSection.labels[selected.operator.toLowerCase()] ?? ""}
-              onLabel={l => fleet.setLabel(selected.owner, selected.operator, l)}
-            />
-            <div style={{ marginTop: 20 }}>
-              <PeerIdCard
-                operator={selected.operator}
-                bondOwner={selected.owner}
-                label={selectedSection.labels[selected.operator.toLowerCase()]}
-              />
-            </div>
-          </OwnerScope>
-        ) : (
-          <Empty>Select a node above, or add one, to open its guide.</Empty>
-        )}
-      </div>
+      {selected && selectedSection && (
+        <NodeModal
+          key={`${selected.owner}-${selected.operator}`}
+          owner={selected.owner}
+          operator={selected.operator}
+          status={fleet.statuses[selected.operator.toLowerCase()]}
+          statusLoading={fleet.statusLoading}
+          label={selectedSection.labels[selected.operator.toLowerCase()]}
+          onClose={() => setSelected(undefined)}
+        />
+      )}
 
       <NetworkOwners />
 

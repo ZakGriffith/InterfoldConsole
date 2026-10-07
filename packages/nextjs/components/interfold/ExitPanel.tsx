@@ -10,10 +10,10 @@ import { type WriteParams } from "~~/hooks/interfold/useSafeAwareWrite";
 import { REGISTRY } from "~~/utils/interfold/contracts";
 import { fmtDuration, fmtTokens, parseTokenInput, sameAddr } from "~~/utils/interfold/format";
 
-type Props = { operator: Address; status?: OperatorStatus };
+type Props = { operator: Address; status?: OperatorStatus; open?: boolean };
 
-/** Destructive path, collapsed by default: remove tickets, unbond, deregister, claim. */
-export const ExitPanel = ({ operator, status: s }: Props) => {
+/** Destructive path, collapsed unless `open`: remove tickets, unbond, deregister, claim. */
+export const ExitPanel = ({ operator, status: s, open = false }: Props) => {
   const { owner, params: p, connected } = useConsole();
   const [ticketAmt, setTicketAmt] = useState("");
   const [bondAmt, setBondAmt] = useState("");
@@ -59,7 +59,7 @@ export const ExitPanel = ({ operator, status: s }: Props) => {
     : undefined;
 
   return (
-    <Disclosure title="Exit, unbond and claim" danger>
+    <Disclosure title="Exit, unbond and claim" danger defaultOpen={open}>
       <div className="if-subsection">
         <Dl
           items={[

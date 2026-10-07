@@ -123,11 +123,14 @@ export const ConsoleProvider = ({ children }: { children: ReactNode }) => {
     };
     try {
       push(parseAddressList(new URLSearchParams(window.location.search).get("owners")));
-      push(readJson<string[]>("interfold.watch.owners", []));
+      // Lists from earlier versions are folded in once and then deleted, so removing an owner sticks.
+      const legacy = ["interfold.watch.owners"];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k?.startsWith("interfold.fleet.owners.")) push(readJson<string[]>(k, []));
+        if (k?.startsWith("interfold.fleet.owners.")) legacy.push(k);
       }
+      for (const k of legacy) push(readJson<string[]>(k, []));
+      for (const k of legacy) localStorage.removeItem(k);
     } catch {
       /* no storage */
     }

@@ -357,6 +357,100 @@
   flex-direction: column;
   gap: 24px;
 }
+/* Node dialog: the guide for one node, opened from its row */
+dialog.if-modal {
+  width: min(960px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  margin: auto;
+  color: var(--if-ink);
+  background: var(--if-paper-2);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+dialog.if-modal::backdrop {
+  background: rgba(4, 8, 18, 0.6);
+  backdrop-filter: blur(2px);
+}
+.if-modal__frame {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+.if-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--if-rule);
+  background: var(--if-paper-3);
+  flex: none;
+}
+.if-modal__body {
+  padding: 20px;
+  overflow-y: auto;
+}
+.if-modal__body .if-card {
+  background: var(--if-paper);
+}
+/* Node menu: one tile per way to act on the node */
+.if-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.if-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 18px;
+  text-align: left;
+  font: inherit;
+  color: var(--if-ink);
+  background: var(--if-paper);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.if-option:hover {
+  border-color: var(--if-accent-soft);
+  background: var(--if-paper-3);
+}
+.if-option--danger {
+  border-color: var(--if-bad-rule);
+}
+.if-option--danger:hover {
+  border-color: var(--if-bad-ink);
+}
+.if-option__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.if-option__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.if-option--danger .if-option__title {
+  color: var(--if-bad-ink);
+}
+.if-option__sub {
+  font-size: 12.5px;
+  color: var(--if-ink-3);
+}
+.if-option__arrow {
+  margin-left: auto;
+  color: var(--if-ink-4);
+  font-family: var(--if-sans);
+}
 .if-guide__head {
   max-width: 760px;
 }
@@ -1695,6 +1789,30 @@
   padding-top: 28px;
   border-top: 1px solid var(--if-rule);
 }
+/* One card per bond owner: the owner strip on top, its nodes directly beneath, one border around both */
+.if-fleet-card {
+  background: var(--if-paper-2);
+  border: 1px solid var(--if-rule);
+  border-radius: var(--if-radius-lg);
+  overflow: hidden;
+}
+.if-fleet-card .if-owner {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 18px 20px;
+}
+.if-fleet-card .if-table-wrap {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--if-rule);
+}
+.if-fleet-card .if-empty {
+  border: 0;
+  border-top: 1px dashed var(--if-accent-soft);
+  border-radius: 0;
+}
 .if-owner__name {
   font-weight: 600;
   color: var(--if-ink);
@@ -1708,10 +1826,32 @@
   text-transform: inherit;
   cursor: pointer;
 }
-.if-fleet-adds {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Node label in the fleet table: plain text that turns into an input on click */
+.if-row-label {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--if-ink);
+  text-align: left;
+  cursor: text;
+}
+.if-row-label--empty {
+  font-weight: 500;
+  color: var(--if-ink-4);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.if-table tbody tr:hover .if-row-label--empty,
+.if-table tbody tr.if-row--on .if-row-label--empty,
+.if-row-label--empty:focus-visible {
+  opacity: 1;
+}
+.if-row-label__input {
+  max-width: 180px;
+  padding: 3px 8px;
+  font-size: 12.5px;
 }
 .if-th-link--on {
   color: var(--if-accent-deep);

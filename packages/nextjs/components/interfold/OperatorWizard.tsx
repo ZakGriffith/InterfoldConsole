@@ -3,27 +3,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActionButtons } from "./ActionButtons";
 import { BatchPanel } from "./BatchPanel";
-import { ExitPanel } from "./ExitPanel";
-import { statusPill } from "./FleetTable";
 import { QueueModeToggle } from "./QueueModeToggle";
 import { RequirementsNote } from "./RequirementsNote";
-import { AddressLink, Badge, CommandBlock, CopyButton, Dl, Field, Note, Step, type StepState } from "./ui";
-import { type Address, formatUnits, parseEther, zeroAddress } from "viem";
+import { CommandBlock, CopyButton, Dl, Field, Note, Step, type StepState } from "./ui";
+import { type Address, formatUnits, zeroAddress } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { susdsToUsds } from "~~/hooks/interfold/useOwnerFunds";
+import { usePeerRegistry } from "~~/hooks/interfold/usePeerRegistry";
 import { type WriteParams } from "~~/hooks/interfold/useSafeAwareWrite";
 import { planOnboarding } from "~~/utils/interfold/batch";
 import { FOLD, LINKS, REGISTRY, SUSDS, TICKET_TOKEN } from "~~/utils/interfold/contracts";
-import { fmtEth, fmtTokens, maxBig, parseTokenInput, parseWholeInput, sameAddr } from "~~/utils/interfold/format";
+import { fmtTokens, maxBig, parseTokenInput, parseWholeInput, sameAddr } from "~~/utils/interfold/format";
 import { operatorInstructions } from "~~/utils/interfold/instructions";
+
+/** "menu" lists the ways to act on the node; the others show one path. Monitoring and exit live outside the wizard. */
+export type WizardView = "menu" | "batch" | "manual" | "monitor" | "exit";
 
 type Props = {
   operator: Address;
   status?: OperatorStatus;
-  statusLoading: boolean;
   label?: string;
-  onLabel?: (label: string) => void;
+  view: WizardView;
+  onPick: (view: WizardView) => void;
   /** "fleet": you manage nodes other people run. "self": you are the node operator. */
   mode?: "fleet" | "self";
 };
@@ -33,8 +35,9 @@ type Props = {
  * polled reads on every render. For a Safe owner the batch panel above the steps does all of them
  * in one transaction; the steps remain for doing them one at a time.
  */
-export const OperatorWizard = ({ operator, status: s, statusLoading, label = "", onLabel, mode = "fleet" }: Props) => {
+export const OperatorWizard = ({ operator, status: s, label = "", view, onPick, mode = "fleet" }: Props) => {
   const { owner, ownerIsContract, params: p, funds: f, connected, isSafe } = useConsole();
+  const peers = usePeerRegistry();
 
   // ---- gates ----
   const ownerSet = !!s && sameAddr(s.bondOwner, owner);
@@ -63,8 +66,6 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
   }, [wantMore, operator]);
   const ticketCount = useMemo(() => parseWholeInput(ticketInput), [ticketInput]);
   const ticketCost = p && ticketCount ? ticketCount * p.ticketPrice : null;
-  const [labelDraft, setLabelDraft] = useState(label);
-  useEffect(() => setLabelDraft(label), [label, operator]);
 
   // ---- writes ----
   const reg = { address: REGISTRY.address, abi: REGISTRY.abi, simulateAs: owner } as const;
@@ -113,8 +114,6 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
   const susdsAllowanceOk = !!(f && ticketCost && f.susdsAllowance >= ticketCost);
   const susdsBalanceOk = !!(f && ticketCost && f.susdsBalance >= ticketCost);
   const isOperatorConnected = sameAddr(connected, operator);
-  const pill = statusPill(s, owner, p?.requiredCiphernodeBond, p?.minTicketBalance);
-  const lowEth = !!s && s.ethBalance < parseEther("0.01");
   const cli = `interfold ciphernode set-bond-owner --owner ${owner}`;
   const nodePlan = planOnboarding(
     owner,
@@ -124,89 +123,69 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
   );
   const showBatch = ownerIsContract && ownerSet && nodePlan.calls.length >= 2;
 
-  return (
-    <div className="if-guide">
-      {/* Node header */}
-      <section className="if-card">
-        <header className="if-card__head" style={{ marginBottom: 12 }}>
-          <div>
-            <div className="if-eyebrow">Node</div>
-            <div className="if-actions">
-              {onLabel ? (
-                <input
-                  className="if-field__input if-inline-label"
-                  value={labelDraft}
-                  placeholder="Label this node"
-                  onChange={e => setLabelDraft(e.target.value)}
-                  onBlur={() => labelDraft !== label && onLabel(labelDraft)}
-                  onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                />
-              ) : (
-                label && <b>{label}</b>
-              )}
-              <AddressLink address={operator} full />
-              {statusLoading && <span className="if-spinner" />}
-            </div>
-          </div>
-          <Badge kind={pill.kind}>{pill.label}</Badge>
-        </header>
-        <Dl
-          items={[
-            [
-              "Bond owner",
-              s ? (
-                s.bondOwner === zeroAddress ? (
-                  <span className="if-dl__muted">not set yet</span>
-                ) : (
-                  <AddressLink address={s.bondOwner} />
-                )
-              ) : (
-                "-"
-              ),
-            ],
-            [
-              "Bond",
-              <span key="b" className="if-mono">
-                {fmtTokens(s?.bond, "FOLD")}
-                {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
-              </span>,
-            ],
-            [
-              "Tickets",
-              <span key="t" className="if-mono">
-                {s ? s.availableTickets.toString() : "-"}
-                <span className="if-stat__of"> / {minTickets.toString()} to go active</span>
-              </span>,
-            ],
-            [
-              "Hot wallet ETH",
-              <span key="e" className="if-mono" style={lowEth ? { color: "var(--if-bad-ink)" } : undefined}>
-                {fmtEth(s?.ethBalance)}
-                {lowEth ? " · top up, the node pays gas for its duties" : ""}
-              </span>,
-            ],
-          ]}
-        />
-        {allDone && s && (
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-            {s.isActive ? (
-              <Note kind="good">
-                All set on-chain: this node is eligible for sortition. Whether the process is actually up and on the
-                current release is a separate check; see the Software column in the node list.
-              </Note>
-            ) : (
-              <>
-                <Note kind="warn">
-                  Everything is in place but <code>isActive</code> is still false. Anyone can ask the registry to
-                  re-evaluate it.{s.exitInProgress ? " An exit is also in progress." : ""}
-                </Note>
-                <ActionButtons label="Refresh status" variant="ghost" params={refresh} requires="connected" />
-              </>
-            )}
+  // A Safe owner can bundle every call; the option is offered whenever the owner is set.
+  const canBatch = ownerIsContract && ownerSet;
+
+  if (view === "menu")
+    return (
+      <div className="if-guide">
+        {allDone && s && !s.isActive && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Note kind="warn">
+              Everything is in place but <code>isActive</code> is still false. Anyone can ask the registry to
+              re-evaluate it.{s.exitInProgress ? " An exit is also in progress." : ""}
+            </Note>
+            <ActionButtons label="Refresh status" variant="ghost" params={refresh} requires="connected" />
           </div>
         )}
-      </section>
+        <div className="if-options">
+          {canBatch && (
+            <Option
+              title={allDone ? "Buy tickets in one Safe transaction" : "Finish setup in one Safe transaction"}
+              sub={
+                allDone
+                  ? "Approve sUSDS and buy the tickets as one bundle: one signature round."
+                  : "Every remaining step, bonded and bundled into one Safe transaction to sign once."
+              }
+              onClick={() => onPick("batch")}
+            />
+          )}
+          <Option
+            title={allDone ? "Buy tickets step by step" : "Finish setup step by step"}
+            sub={
+              allDone
+                ? "Approve sUSDS, then buy: two separate wallet transactions."
+                : "Authorize, bond, register and buy tickets, one transaction at a time."
+            }
+            onClick={() => onPick("manual")}
+          />
+          {peers.enabled && (
+            <Option
+              title="Monitoring"
+              sub="Register the node's peer ID so the Software column can check it is up and on the current release."
+              onClick={() => onPick("monitor")}
+            />
+          )}
+          <Option
+            danger
+            title="Exit, unbond and claim"
+            sub="Remove tickets, unbond FOLD and deregister. Queued assets wait out the exit delay."
+            onClick={() => onPick("exit")}
+          />
+        </div>
+        <div className="if-actions">
+          <a className="if-btn if-btn--ghost if-btn--sm" href={LINKS.docs} target="_blank" rel="noreferrer">
+            Operator docs <span className="if-btn__arrow">→</span>
+          </a>
+          <a className="if-btn if-btn--ghost if-btn--sm" href={LINKS.dashboard} target="_blank" rel="noreferrer">
+            Official dashboard <span className="if-btn__arrow">→</span>
+          </a>
+        </div>
+      </div>
+    );
 
+  return (
+    <div className="if-guide">
       {!allDone && (
         <RequirementsNote
           foldNeeded={nodePlan.totalFold}
@@ -216,24 +195,39 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         />
       )}
 
-      {showBatch && (
-        <BatchPanel
-          title={
-            allDone
-              ? `Buy ${(ticketCount ?? 0n).toString()} more ticket${ticketCount === 1n ? "" : "s"} in one Safe transaction`
-              : "Do every remaining step for this node in one go"
-          }
-          plan={nodePlan}
-          batchName={`interfold-onboard-${label ? label.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : operator.slice(0, 10)}`}
-          showRequirements={false}
-        />
+      {view === "batch" && (
+        <>
+          {allDone && (
+            <div className="if-fields">
+              <Field
+                label="Tickets to add"
+                value={ticketInput}
+                onChange={setTicketInput}
+                placeholder="1"
+                invalid={ticketInput.trim() !== "" && ticketCount === null}
+                hint={ticketCost ? `costs ${fmtTokens(ticketCost, "sUSDS")}` : undefined}
+              />
+            </div>
+          )}
+          {showBatch ? (
+            <BatchPanel
+              title={
+                allDone
+                  ? `Buy ${(ticketCount ?? 0n).toString()} more ticket${ticketCount === 1n ? "" : "s"} in one Safe transaction`
+                  : "Do every remaining step for this node in one go"
+              }
+              plan={nodePlan}
+              batchName={`interfold-onboard-${label ? label.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : operator.slice(0, 10)}`}
+              showRequirements={false}
+            />
+          ) : (
+            <Note>Enter how many tickets to buy.</Note>
+          )}
+        </>
       )}
 
-      {!allDone && (
+      {view === "manual" && !allDone && (
         <>
-          <div className="if-eyebrow" style={{ marginBottom: -8 }}>
-            {showBatch ? "Or one step at a time" : "Steps"}
-          </div>
           {isSafe && <QueueModeToggle />}
           <div className="if-steps">
             <Step
@@ -457,7 +451,7 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
         </>
       )}
 
-      {allDone && (
+      {view === "manual" && allDone && (
         <section className="if-card">
           <div className="if-eyebrow">More tickets</div>
           <p className="if-card__body" style={{ marginBottom: 12 }}>
@@ -496,17 +490,27 @@ export const OperatorWizard = ({ operator, status: s, statusLoading, label = "",
           </div>
         </section>
       )}
-
-      <div className="if-actions">
-        <a className="if-btn if-btn--ghost if-btn--sm" href={LINKS.docs} target="_blank" rel="noreferrer">
-          Operator docs <span className="if-btn__arrow">→</span>
-        </a>
-        <a className="if-btn if-btn--ghost if-btn--sm" href={LINKS.dashboard} target="_blank" rel="noreferrer">
-          Official dashboard <span className="if-btn__arrow">→</span>
-        </a>
-      </div>
-
-      <ExitPanel operator={operator} status={s} />
     </div>
   );
 };
+
+/** One choice on the node menu. */
+const Option = ({
+  title,
+  sub,
+  danger,
+  onClick,
+}: {
+  title: string;
+  sub: string;
+  danger?: boolean;
+  onClick: () => void;
+}) => (
+  <button type="button" className={`if-option${danger ? " if-option--danger" : ""}`} onClick={onClick}>
+    <span className="if-option__text">
+      <span className="if-option__title">{title}</span>
+      <span className="if-option__sub">{sub}</span>
+    </span>
+    <span className="if-option__arrow">→</span>
+  </button>
+);
