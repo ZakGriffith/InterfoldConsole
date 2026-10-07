@@ -21,7 +21,7 @@ const cmp = (a: NetworkOwner, b: NetworkOwner, key: SortKey) => {
 export const NetworkOwners = () => {
   const { owners: tracked, addOwner, removeOwner } = useConsole();
   const net = useNetworkOwners();
-  const [sort, setSort] = useState<SortKey>("nodes");
+  const [sort, setSort] = useState<SortKey>("tickets");
   const [onlyTracked, setOnlyTracked] = useState(false);
 
   const rows = useMemo(() => {
