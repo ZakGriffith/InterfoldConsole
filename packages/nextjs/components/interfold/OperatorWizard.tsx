@@ -14,7 +14,7 @@ import { usePeerRegistry } from "~~/hooks/interfold/usePeerRegistry";
 import { type WriteParams } from "~~/hooks/interfold/useSafeAwareWrite";
 import { planOnboarding } from "~~/utils/interfold/batch";
 import { FOLD, LINKS, REGISTRY, SUSDS, TICKET_TOKEN } from "~~/utils/interfold/contracts";
-import { fmtTokens, maxBig, parseTokenInput, parseWholeInput, sameAddr } from "~~/utils/interfold/format";
+import { fmtTokens, maxBig, parseCountInput, parseTokenInput, sameAddr } from "~~/utils/interfold/format";
 import { operatorInstructions } from "~~/utils/interfold/instructions";
 
 /** "menu" lists the ways to act on the node; the others show one path. Monitoring and exit live outside the wizard. */
@@ -64,7 +64,8 @@ export const OperatorWizard = ({ operator, status: s, label = "", view, onPick, 
     if (s && ticketInput.trim() === "") setTicketInput((wantMore > 0n ? wantMore : 1n).toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantMore, operator]);
-  const ticketCount = useMemo(() => parseWholeInput(ticketInput), [ticketInput]);
+  // 0 is a valid answer while setting up: bond and register now, tickets later.
+  const ticketCount = useMemo(() => parseCountInput(ticketInput), [ticketInput]);
   const ticketCost = p && ticketCount ? ticketCount * p.ticketPrice : null;
 
   // ---- writes ----
@@ -197,18 +198,22 @@ export const OperatorWizard = ({ operator, status: s, label = "", view, onPick, 
 
       {view === "batch" && (
         <>
-          {allDone && (
-            <div className="if-fields">
-              <Field
-                label="Tickets to add"
-                value={ticketInput}
-                onChange={setTicketInput}
-                placeholder="1"
-                invalid={ticketInput.trim() !== "" && ticketCount === null}
-                hint={ticketCost ? `costs ${fmtTokens(ticketCost, "sUSDS")}` : undefined}
-              />
-            </div>
-          )}
+          <div className="if-fields">
+            <Field
+              label={allDone ? "Tickets to add" : "Tickets to buy"}
+              value={ticketInput}
+              onChange={setTicketInput}
+              placeholder="1"
+              invalid={ticketInput.trim() !== "" && ticketCount === null}
+              hint={
+                ticketCost
+                  ? `costs ${fmtTokens(ticketCost, "sUSDS")}`
+                  : allDone
+                    ? undefined
+                    : `0 is fine: bond and register now, buy tickets later. At least ${minTickets.toString()} to go active.`
+              }
+            />
+          </div>
           {showBatch ? (
             <BatchPanel
               title={

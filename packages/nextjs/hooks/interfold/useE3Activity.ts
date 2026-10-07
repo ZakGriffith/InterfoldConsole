@@ -237,8 +237,8 @@ export const useE3Activity = () => {
     queryKey: ["interfold", "e3-activity"],
     enabled: !!publicClient,
     queryFn: () => fetchActivity(publicClient!),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
     retry: 1,
   });
   const paused = useReadContract({
@@ -246,7 +246,7 @@ export const useE3Activity = () => {
     abi: INTERFOLD.abi,
     functionName: "requestsPaused",
     chainId: CHAIN_ID,
-    query: { refetchInterval: 60_000 },
+    query: { refetchInterval: 120_000 },
   });
 
   const byOperator: Record<string, E3Duty[]> = {};

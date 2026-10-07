@@ -63,6 +63,12 @@ export const parseWholeInput = (s: string): bigint | null => {
   return v > 0n ? v : null;
 };
 
+/** Like parseWholeInput but 0 is a valid answer (e.g. "no tickets yet"). */
+export const parseCountInput = (s: string): bigint | null => {
+  const n = s.trim();
+  return /^\d+$/.test(n) ? BigInt(n) : null;
+};
+
 export const sameAddr = (a?: string | null, b?: string | null): boolean =>
   !!a && !!b && a.toLowerCase() === b.toLowerCase();
 

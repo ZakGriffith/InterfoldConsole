@@ -1,9 +1,7 @@
 "use client";
 
-import { type Address, parseUnits } from "viem";
-import { useReadContracts } from "wagmi";
-import scaffoldConfig from "~~/scaffold.config";
-import { CHAIN_ID, FOLD, REGISTRY, SUSDS, TICKET_TOKEN } from "~~/utils/interfold/contracts";
+import { FUNDS_READS, ONE, useOwnerReads } from "./useOwnerReads";
+import { type Address } from "viem";
 
 export type OwnerFunds = {
   foldBalance: bigint;
@@ -20,52 +18,12 @@ export type OwnerFunds = {
   ethBalance?: bigint;
 };
 
-const ONE = parseUnits("1", 18);
-
-/** Everything the bond owner (the Safe) holds that the wizard gates on. One multicall per poll. */
+/** Everything the bond owner (the Safe) holds that the wizard gates on: the first slice of useOwnerReads. */
 export const useOwnerFunds = (owner: Address | undefined) => {
-  const q = useReadContracts({
-    contracts: owner
-      ? [
-          { address: FOLD.address, abi: FOLD.abi, functionName: "balanceOf", args: [owner], chainId: CHAIN_ID },
-          {
-            address: FOLD.address,
-            abi: FOLD.abi,
-            functionName: "transferableBalanceOf",
-            args: [owner],
-            chainId: CHAIN_ID,
-          },
-          { address: FOLD.address, abi: FOLD.abi, functionName: "lockedBalanceOf", args: [owner], chainId: CHAIN_ID },
-          {
-            address: FOLD.address,
-            abi: FOLD.abi,
-            functionName: "allowance",
-            args: [owner, REGISTRY.address],
-            chainId: CHAIN_ID,
-          },
-          { address: SUSDS.address, abi: SUSDS.abi, functionName: "balanceOf", args: [owner], chainId: CHAIN_ID },
-          {
-            address: SUSDS.address,
-            abi: SUSDS.abi,
-            functionName: "allowance",
-            args: [owner, TICKET_TOKEN.address],
-            chainId: CHAIN_ID,
-          },
-          {
-            address: REGISTRY.address,
-            abi: REGISTRY.abi,
-            functionName: "totalBonded",
-            args: [owner],
-            chainId: CHAIN_ID,
-          },
-          { address: SUSDS.address, abi: SUSDS.abi, functionName: "convertToAssets", args: [ONE], chainId: CHAIN_ID },
-        ]
-      : [],
-    query: { enabled: !!owner, refetchInterval: scaffoldConfig.pollingInterval },
-  });
+  const q = useOwnerReads(owner);
 
-  const r = q.data;
-  const ok = !!r && r.length === 8 && r.every(x => x.status === "success");
+  const r = q.data?.slice(0, FUNDS_READS);
+  const ok = !!r && r.length === FUNDS_READS && r.every(x => x.status === "success");
   const data: OwnerFunds | undefined = ok
     ? {
         foldBalance: r[0].result as bigint,

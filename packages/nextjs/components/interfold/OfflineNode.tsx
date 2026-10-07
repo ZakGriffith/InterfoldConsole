@@ -20,7 +20,7 @@ import {
   fmtTokens,
   isContractCode,
   maxBig,
-  parseWholeInput,
+  parseCountInput,
   safeNormalize,
   toChecksum,
 } from "~~/utils/interfold/format";
@@ -81,7 +81,8 @@ export const OfflineNode = () => {
   const ownerIsPlainKey = !!owner && ownerCode !== undefined && !ownerIsContract;
 
   const minTickets = params ? maxBig(1n, params.minTicketBalance) : 1n;
-  const ticketsWanted = parseWholeInput(ticketsIn) ?? minTickets;
+  // 0 is allowed: bond and register now, buy tickets later (the node stays inactive until it has some).
+  const ticketsWanted = parseCountInput(ticketsIn) ?? minTickets;
   const plan = useMemo(
     () =>
       operator && s
@@ -126,10 +127,10 @@ export const OfflineNode = () => {
             value={ticketsIn}
             onChange={setTicketsIn}
             placeholder="1"
-            invalid={ticketsIn.trim() !== "" && parseWholeInput(ticketsIn) === null}
+            invalid={ticketsIn.trim() !== "" && parseCountInput(ticketsIn) === null}
             hint={
               params
-                ? `${fmtTokens(params.ticketPrice, "sUSDS")} each, at least ${minTickets.toString()} to go active`
+                ? `${fmtTokens(params.ticketPrice, "sUSDS")} each, at least ${minTickets.toString()} to go active. 0 is fine: bond and register now, buy tickets later.`
                 : undefined
             }
           />

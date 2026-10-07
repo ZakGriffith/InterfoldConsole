@@ -1,9 +1,7 @@
 "use client";
 
+import { FUNDS_READS, VOTES_READS, useOwnerReads } from "./useOwnerReads";
 import { type Address } from "viem";
-import { useReadContracts } from "wagmi";
-import scaffoldConfig from "~~/scaffold.config";
-import { CHAIN_ID, GOVERNANCE } from "~~/utils/interfold/contracts";
 
 export type VotingPower = {
   /** What the DAO counts for this account right now (BondedVotes.getVotes). */
@@ -20,23 +18,12 @@ export type VotingPower = {
   delegate: Address;
 };
 
-/** Voting power of one bond owner, split by source. One multicall per poll. */
+/** Voting power of one bond owner, split by source: the second slice of useOwnerReads. */
 export const useVotingPower = (owner: Address | undefined) => {
-  const q = useReadContracts({
-    contracts: owner
-      ? [
-          { ...GOVERNANCE.votes, functionName: "getVotes", args: [owner], chainId: CHAIN_ID },
-          { ...GOVERNANCE.bondedCheckpoints, functionName: "bonded", args: [owner], chainId: CHAIN_ID },
-          { ...GOVERNANCE.escrow, functionName: "votingPowerForAccount", args: [owner], chainId: CHAIN_ID },
-          { ...GOVERNANCE.escrowVotes, functionName: "getVotes", args: [owner], chainId: CHAIN_ID },
-          { ...GOVERNANCE.escrowVotes, functionName: "delegates", args: [owner], chainId: CHAIN_ID },
-        ]
-      : [],
-    query: { enabled: !!owner, refetchInterval: scaffoldConfig.pollingInterval },
-  });
+  const q = useOwnerReads(owner);
 
-  const r = q.data;
-  const ok = !!r && r.length === 5 && r.every(x => x.status === "success");
+  const r = q.data?.slice(FUNDS_READS, FUNDS_READS + VOTES_READS);
+  const ok = !!r && r.length === VOTES_READS && r.every(x => x.status === "success");
   let data: VotingPower | undefined;
   if (ok) {
     const total = r[0].result as bigint;

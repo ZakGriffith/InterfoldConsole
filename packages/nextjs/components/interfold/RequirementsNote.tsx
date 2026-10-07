@@ -72,20 +72,28 @@ export const RequirementsList = ({
           )}
           . Locked or vesting FOLD counts: the registry credits the bond before it pulls the tokens.
         </Row>
-        <Row ok={susdsOk}>
-          <b>{fmtTokens(susds, "sUSDS")}</b> for {ticketCount.toString()} ticket{ticketCount === 1n ? "" : "s"} (
-          {fmtTokens(p.ticketPrice, "sUSDS")} each; a node needs at least {minTickets.toString()} to go active)
-          {f && (
-            <>
-              {" "}
-              (holds {fmtTokens(f.susdsBalance, "sUSDS")}
-              {f.susdsRate > 0n && <> ≈ {fmtTokens(susdsToUsds(f.susdsBalance, f.susdsRate), "USDS")}</>}
-              {susdsOk === false && <>; short by {fmtTokens(susds - f.susdsBalance, "sUSDS")}</>})
-            </>
-          )}
-          . This must be <b>sUSDS</b> (USDS deposited into Sky Savings at sky.money), not plain USDS or DAI; a plain
-          USDS balance does not count.
-        </Row>
+        {susds === 0n ? (
+          <Row ok={true}>
+            <b>No sUSDS yet</b>: no tickets in this step. The node stays inactive until it holds at least{" "}
+            {minTickets.toString()} ticket{minTickets === 1n ? "" : "s"} ({fmtTokens(p.ticketPrice, "sUSDS")} each, in
+            sUSDS); buy them any time after it is registered.
+          </Row>
+        ) : (
+          <Row ok={susdsOk}>
+            <b>{fmtTokens(susds, "sUSDS")}</b> for {ticketCount.toString()} ticket{ticketCount === 1n ? "" : "s"} (
+            {fmtTokens(p.ticketPrice, "sUSDS")} each; a node needs at least {minTickets.toString()} to go active)
+            {f && (
+              <>
+                {" "}
+                (holds {fmtTokens(f.susdsBalance, "sUSDS")}
+                {f.susdsRate > 0n && <> ≈ {fmtTokens(susdsToUsds(f.susdsBalance, f.susdsRate), "USDS")}</>}
+                {susdsOk === false && <>; short by {fmtTokens(susds - f.susdsBalance, "sUSDS")}</>})
+              </>
+            )}
+            . This must be <b>sUSDS</b> (USDS deposited into Sky Savings at sky.money), not plain USDS or DAI; a plain
+            USDS balance does not count.
+          </Row>
+        )}
         <Row ok={nodeEth === undefined ? undefined : nodeEth >= MIN_NODE_ETH}>
           The <b>node&apos;s own hot wallet</b> needs a little ETH for gas (at least 0.01 ETH, ideally about 0.05) to
           submit sortition tickets and committee transactions
