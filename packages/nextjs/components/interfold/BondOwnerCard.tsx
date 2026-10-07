@@ -1,6 +1,7 @@
 "use client";
 
 import { UnlockStrip } from "./UnlockStrip";
+import { VotesStrip } from "./VotesStrip";
 import { AddressLink, Badge } from "./ui";
 import { type Address } from "viem";
 import { useBytecode, useEnsName } from "wagmi";
@@ -90,6 +91,7 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
         )}
       </div>
       {primary && <UnlockStrip owner={s.owner} />}
+      <VotesStrip owner={s.owner} isContract={isContract} primary={primary} />
     </section>
   );
 };

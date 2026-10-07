@@ -40,6 +40,47 @@ export const LINKS = {
   safeApp: "https://app.safe.global",
   /** This console's public URL, used in copied operator instructions. Forks set NEXT_PUBLIC_CONSOLE_URL. */
   console: process.env.NEXT_PUBLIC_CONSOLE_URL ?? "https://interfold-console.vercel.app",
+  governance: "https://governance.theinterfold.com/",
+  governanceProposals: "https://governance.theinterfold.com/plugins/proposals/#/",
+  governanceVotingPower: "https://governance.theinterfold.com/plugins/lock/#/",
+} as const;
+
+/**
+ * Interfold governance (Aragon OSx, secret ballots via CRISP). Addresses taken from
+ * governance.theinterfold.com's bundle and checked against Sourcify on 2026-09-30.
+ *
+ * Voting power is read from BondedVotes: FOLD locked in the voting escrow (counts only once
+ * delegated, like ERC20Votes) + FOLD bonded through the BondingRegistry (credited to the bond
+ * owner) + vesting-locked FOLD still in the wallet, net of the bond. BondedVotes.delegate reverts
+ * (DelegationNotSupported): only the escrow part can be delegated, through the escrow's IVotes adapter.
+ */
+export const GOVERNANCE = {
+  votes: {
+    address: "0x028deEA644258c78b1B5B2eacF469F5D781Fb43E",
+    abi: parseAbi([
+      "function getVotes(address account) view returns (uint256)",
+      "function delegates(address account) view returns (address)",
+    ]),
+  },
+  /** IBondedCheckpoints written by the registry; `bonded` is what BondedVotes adds for an owner. */
+  bondedCheckpoints: {
+    address: "0xDbCaeec5B040A134314FfD43aA2ca0D16006f963",
+    abi: parseAbi(["function bonded(address account) view returns (uint256)"]),
+  },
+  /** Aragon voting escrow: FOLD locked here as lock NFTs; 30-day cooldown to withdraw. */
+  escrow: {
+    address: "0x71360F335e4Ec9c010e29bA7171bc62c9B4c1F12",
+    abi: parseAbi(["function votingPowerForAccount(address account) view returns (uint256)"]),
+  },
+  /** The escrow's IVotes adapter (escrow.ivotesAdapter()): holds the delegation for locked FOLD. */
+  escrowVotes: {
+    address: "0x8f141B4D294d39e7D1530916A3eD65B3970C6FEc",
+    abi: parseAbi([
+      "function getVotes(address account) view returns (uint256)",
+      "function delegates(address account) view returns (address)",
+      "function delegate(address delegatee)",
+    ]),
+  },
 } as const;
 
 export const explorerAddress = (a: string) => `${LINKS.explorer}/address/${a}`;

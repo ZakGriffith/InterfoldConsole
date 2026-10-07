@@ -25,3 +25,5 @@ dist
 # ciphernode probe (see probe/)
 probe/node_modules
 probe/probe.json
+
+.vercel
