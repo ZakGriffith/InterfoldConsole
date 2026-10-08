@@ -396,7 +396,7 @@ export const FleetNotes = ({
               : ". The probe could not join the peer network at all this run, so the column says nothing about the nodes."
             : "."}
           {probe.stale &&
-            " GitHub is running the scheduled probe hours late, so results older than 45 minutes are marked stale; the nodes themselves may be fine."}
+            " The last probe report is older than 45 minutes, so the scheduler that triggers it is running late; the nodes themselves may be fine."}
         </p>
       )}
       {showE3 && e3.data && <E3History activity={e3.data} paused={e3.paused} operators={operators} labels={labels} />}

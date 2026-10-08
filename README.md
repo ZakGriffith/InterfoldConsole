@@ -41,6 +41,7 @@ To turn it on for your own deployment:
 1. Add an Upstash Redis store (Vercel Marketplace → Upstash, or any Upstash database) and set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` on the deployment. Without them the API answers `enabled: false` and the UI hides itself.
 2. Set the repo variable `PEER_REGISTRY_URL` to `https://<your console>/api/peer-ids` so the workflow reads your registry, and `NEXT_PUBLIC_PROBE_URL` to your fork's `probe-data` raw URL.
 3. Enable the "Probe ciphernodes" workflow and run it once by hand.
+4. GitHub runs scheduled workflows hours late at times (every 3 to 7 hours instead of every 10 minutes since October 2026), which the console reports as "probe stale". To keep the 10-minute cadence, set `PROBE_DISPATCH_TOKEN` on the deployment (a fine-grained GitHub token with Actions read and write on the repo; this also enables the *Re-probe now* button), then let Upstash QStash call `/api/probe/run` on a schedule: `QSTASH_TOKEN=<token> node probe/schedule.mjs` creates it, `status` shows the last and next run, `remove` deletes it. The free QStash tier covers 144 calls a day.
 
 `probe/nodes.json` accepts fixed entries (a public IP or a peer ID) for nodes you do not want to register through the UI. To run the probe locally:
 
