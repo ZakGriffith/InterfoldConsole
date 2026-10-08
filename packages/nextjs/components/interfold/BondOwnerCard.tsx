@@ -1,5 +1,6 @@
 "use client";
 
+import { RewardsStrip } from "./RewardsStrip";
 import { UnlockStrip } from "./UnlockStrip";
 import { VotesStrip } from "./VotesStrip";
 import { AddressLink, Badge } from "./ui";
@@ -92,6 +93,7 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
       </div>
       {primary && <UnlockStrip owner={s.owner} />}
       <VotesStrip owner={s.owner} isContract={isContract} primary={primary} />
+      <RewardsStrip owner={s.owner} primary={primary} />
     </section>
   );
 };

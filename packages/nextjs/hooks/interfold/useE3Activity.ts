@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { parseAbiItem } from "viem";
 import { usePublicClient, useReadContract } from "wagmi";
 import { CHAIN_ID, INTERFOLD, REGISTRY, REGISTRY_DEPLOYED_ON_BLOCK } from "~~/utils/interfold/contracts";
+import { scanLogs } from "~~/utils/interfold/discovery";
 
 /** IInterfold.E3Stage, in enum order. */
 export const E3_STAGE = [
@@ -67,7 +68,6 @@ const OBLIGATION = parseAbiItem(
   "event CommitteeObligationUpdated(uint256 indexed e3Id, address indexed registry, address indexed operator, bool active)",
 );
 const ZERO = "0x0000000000000000000000000000000000000000";
-const CHUNK = 20_000n;
 /** Timestamps are one eth_getBlock each; only the newest E3s get them. */
 const DATED = 25;
 /** How far back the scan looks. Keeps the badge about recent duty and the getLogs range constant. */
@@ -96,30 +96,17 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
   const windowStart = latest > WINDOW_BLOCKS ? latest - WINDOW_BLOCKS : 0n;
   const since = (deployed: bigint) => (deployed > windowStart ? deployed : windowStart);
 
-  // One wide eth_getLogs first; public RPCs that cap the range fall back to chunks.
-  const scan = async <T>(get: (from: bigint, to: bigint) => Promise<T[]>, start: bigint): Promise<T[]> => {
-    try {
-      return await get(start, latest);
-    } catch {
-      /* range refused */
-    }
-    const out: T[] = [];
-    for (let from = start; from <= latest; from += CHUNK) {
-      const to = from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest;
-      out.push(...(await get(from, to)));
-    }
-    return out;
-  };
-
   const [lifecycle, obligations] = await Promise.all([
-    scan(
+    scanLogs(
       (fromBlock, toBlock) =>
         client.getLogs({ address: INTERFOLD.address, events: [STAGE_CHANGED, FAILED, PAUSED_SET], fromBlock, toBlock }),
       since(INTERFOLD.deployedOnBlock),
+      latest,
     ),
-    scan(
+    scanLogs(
       (fromBlock, toBlock) => client.getLogs({ address: REGISTRY.address, event: OBLIGATION, fromBlock, toBlock }),
       since(REGISTRY_DEPLOYED_ON_BLOCK),
+      latest,
     ),
   ]);
 

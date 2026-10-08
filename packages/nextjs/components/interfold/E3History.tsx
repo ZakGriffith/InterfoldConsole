@@ -12,8 +12,9 @@ import {
   E3_WINDOW_DAYS,
   e3Outcome,
 } from "~~/hooks/interfold/useE3Activity";
+import { tokenSymbol, useE3Rewards } from "~~/hooks/interfold/useE3Rewards";
 import { ago } from "~~/hooks/interfold/useNodeProbe";
-import { fmtDate, sameAddr, shortAddr } from "~~/utils/interfold/format";
+import { fmtDate, fmtTokens, sameAddr, shortAddr } from "~~/utils/interfold/format";
 
 const isLive = (e3: E3) => e3.stage !== E3_COMPLETE && e3.stage !== E3_FAILED;
 const atIso = (unix: number | undefined) => (unix ? new Date(unix * 1000).toISOString() : undefined);
@@ -84,6 +85,7 @@ type Props = {
 /** Every mainnet E3 and how this fleet took part, folded under the fleet table. */
 export const E3History = ({ activity, paused, operators, labels }: Props) => {
   const { e3s } = activity;
+  const { ledger } = useE3Rewards();
   const complete = e3s.filter(e => e.stage === E3_COMPLETE).length;
   const failed = e3s.filter(e => e.stage === E3_FAILED).length;
   const live = e3s.length - complete - failed;
@@ -139,6 +141,7 @@ export const E3History = ({ activity, paused, operators, labels }: Props) => {
                 const ours = mine(e3);
                 const took = e3.endedAt && e3.requestedAt ? e3.endedAt - e3.requestedAt : undefined;
                 const key = e3.id.toString();
+                const share = ledger?.perE3[key];
                 return (
                   <Fragment key={key}>
                     <tr style={{ cursor: "default" }}>
@@ -185,6 +188,7 @@ export const E3History = ({ activity, paused, operators, labels }: Props) => {
                               {when(e3.endedAt, e3.endBlock)}
                               {took !== undefined && `, ${Math.round(took / 60)} min after the request`}
                               {e3.obligated.length > 0 && `, ${e3.obligated.length} bonds still obligated`}
+                              {share && `, ${fmtTokens(share.amount, tokenSymbol(share.token))} per node`}
                             </span>
                           )}
                         </div>

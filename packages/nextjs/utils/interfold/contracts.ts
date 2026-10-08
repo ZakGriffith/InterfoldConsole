@@ -29,6 +29,27 @@ export const INTERFOLD = {
   ]),
 } as const;
 
+/**
+ * E3RefundManager (deployments/manifest.json -> mainnet.contracts.refundManager; impl verified on
+ * Sourcify). On a completed E3 Interfold parks each committee member's share of the payment here,
+ * payable to that operator's bond owner as snapshotted at request time; the owner claims per E3.
+ * Failed E3s refund the requester instead.
+ */
+export const REFUND_MANAGER = {
+  address: "0x1940eF168f4E0B3dA24BEca539856684793B0F6e",
+  deployedOnBlock: 25_786_000n,
+  abi: parseAbi([
+    "function pendingHeldSuccessReward(uint256 e3Id, address account) view returns (uint256)",
+    "function claimHeldSuccessReward(uint256 e3Id) returns (uint256)",
+    "event SuccessRewardHeld(uint256 indexed e3Id, address indexed operator, address indexed token, uint256 amount)",
+    "event RewardRecipientSnapshotted(uint256 indexed e3Id, address indexed operator, address indexed recipient)",
+    "event HeldSuccessRewardClaimed(uint256 indexed e3Id, address indexed account, address indexed token, uint256 amount)",
+  ]),
+} as const;
+
+/** The payment token E3 requesters have used so far; rewards arrive in whatever the requester paid. */
+export const USDS_ADDRESS = "0xdC035D45d973E3EC169d2276DDab16f1e407384F";
+
 export const LINKS = {
   explorer: "https://etherscan.io",
   dashboard: "https://dashboard.theinterfold.com/#operator",

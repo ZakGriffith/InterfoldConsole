@@ -8,6 +8,28 @@ const CHUNK = 20_000n;
 export type Discovery = { events: Address[]; safe: Address[]; logsFailed: boolean };
 
 /** React Query key shared by the Fleet and Watch pages so one scan serves both. */
+/**
+ * eth_getLogs over [start, latest]: one wide request first, then CHUNK-sized pieces when the RPC
+ * refuses the range (public endpoints cap it).
+ */
+export const scanLogs = async <T>(
+  get: (fromBlock: bigint, toBlock: bigint) => Promise<T[]>,
+  start: bigint,
+  latest: bigint,
+): Promise<T[]> => {
+  try {
+    return await get(start, latest);
+  } catch {
+    /* range refused */
+  }
+  const out: T[] = [];
+  for (let from = start; from <= latest; from += CHUNK) {
+    const to = from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest;
+    out.push(...(await get(from, to)));
+  }
+  return out;
+};
+
 export const discoveryKey = (owner: Address) => ["interfold", "operators", owner] as const;
 
 /**
