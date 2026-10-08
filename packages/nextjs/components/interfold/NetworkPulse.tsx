@@ -1,6 +1,6 @@
 "use client";
 
-import { E3_FAILED, e3Outcome, useE3Activity } from "~~/hooks/interfold/useE3Activity";
+import { E3, E3_FAILED, e3Outcome, useE3Activity } from "~~/hooks/interfold/useE3Activity";
 import { useNetworkPulse } from "~~/hooks/interfold/useNetworkPulse";
 import { fmtCompact, fmtDate, fmtTokens } from "~~/utils/interfold/format";
 
@@ -17,8 +17,12 @@ export const NetworkPulse = () => {
   const e3 = useE3Activity();
   const e3s = e3.data?.e3s;
   const latest = e3s?.[0];
+  const failedCount = (all: E3[]) => {
+    const failed = all.filter(e => e.stage === E3_FAILED).length;
+    return failed ? ` ${failed} of ${all.length} failed.` : "";
+  };
   const e3Title = latest
-    ? `Latest: E3 #${latest.num}, ${e3Outcome(latest)}${latest.requestedAt ? `, requested ${fmtDate(latest.requestedAt)}` : ""}. ${e3s!.filter(e => e.stage === E3_FAILED).length} of ${e3s!.length} failed.`
+    ? `Latest: E3 #${latest.num}, ${e3Outcome(latest)}${latest.requestedAt ? `, requested ${fmtDate(latest.requestedAt)}` : ""}.${failedCount(e3s!)}`
     : "No E3 requested on mainnet yet";
   return (
     <section className="if-pulse" aria-label="Network activity">

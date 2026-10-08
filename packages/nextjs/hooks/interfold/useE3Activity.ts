@@ -74,6 +74,12 @@ const DATED = 25;
 export const E3_WINDOW_DAYS = 30;
 const WINDOW_BLOCKS = BigInt(E3_WINDOW_DAYS) * 7_200n;
 const COUNTER_MASK = (1n << 96n) - 1n;
+/**
+ * E3s the console leaves out entirely. #0 (2026-09-19, committee formation) and #1 (2026-09-21, DKG
+ * timeout) were Interfold's own launch tests on mainnet, not operator duty, so they say nothing
+ * about the nodes.
+ */
+const EXCLUDED_E3S = new Set([0, 1]);
 /** Block timestamps never change: fetched once per page load, not once per scan. */
 const blockStamps = new Map<bigint, number>();
 
@@ -190,7 +196,7 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
   }
 
   const e3s = [...byId.values()]
-    .filter(e3 => !partial.has(e3.id))
+    .filter(e3 => !partial.has(e3.id) && !EXCLUDED_E3S.has(e3.num))
     .sort((a, b) => (a.requestBlock < b.requestBlock ? 1 : -1));
 
   const blocks = new Set<bigint>();

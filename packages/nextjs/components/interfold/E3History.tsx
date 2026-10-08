@@ -104,7 +104,7 @@ export const E3History = ({ activity, paused, operators, labels }: Props) => {
     `${e3s.length} requested`,
     live ? `${live} running` : null,
     `${complete} complete`,
-    `${failed} failed`,
+    failed ? `${failed} failed` : null,
     paused
       ? `requests paused${activity.pausedSince ? ` since ${fmtDate(activity.pausedSince)}` : ""}`
       : paused === false
