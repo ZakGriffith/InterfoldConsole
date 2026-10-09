@@ -109,5 +109,8 @@ export const explorerTx = (h: string) => `${LINKS.explorer}/tx/${h}`;
 export const safeQueue = (safe: string) => `${LINKS.safeApp}/transactions/queue?safe=eth:${safe}`;
 export const safeTx = (safe: string, safeTxHash: string) =>
   `${LINKS.safeApp}/transactions/tx?safe=eth:${safe}&id=multisig_${safe}_${safeTxHash}`;
+/** This console opened as a Safe App for `safe`, so the Safe itself can sign owner-only calls. */
+export const safeOpenConsole = (safe: string) =>
+  `${LINKS.safeApp}/apps/open?safe=eth:${safe}&appUrl=${encodeURIComponent(LINKS.console)}`;
 export const safeTxBuilder = (safe: string) =>
   `${LINKS.safeApp}/apps/open?safe=eth:${safe}&appUrl=https%3A%2F%2Fapps-portal.safe.global%2Ftx-builder`;

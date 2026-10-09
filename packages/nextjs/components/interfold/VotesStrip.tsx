@@ -13,8 +13,6 @@ import { fmtTokens, safeNormalize, sameAddr, toChecksum } from "~~/utils/interfo
 
 type Props = {
   owner: Address;
-  /** The owner is a contract (a Safe): it cannot sign a secret ballot. */
-  isContract: boolean;
   /** Only the connection's own owner gets the delegate control. */
   primary: boolean;
 };
@@ -25,7 +23,7 @@ type Props = {
  * sources a bond owner usually has (bonded and vesting FOLD) cannot be delegated either. Only FOLD
  * locked in the voting escrow can, so that is the one control offered.
  */
-export const VotesStrip = ({ owner, isContract, primary }: Props) => {
+export const VotesStrip = ({ owner, primary }: Props) => {
   const { data: v } = useVotingPower(owner);
   if (!v || v.total === 0n) return null;
 
@@ -53,14 +51,6 @@ export const VotesStrip = ({ owner, isContract, primary }: Props) => {
           </a>
         </span>
       </div>
-      {isContract && (
-        <div className="if-unlock__row">
-          <span className="if-unlock__side" style={{ marginLeft: 0 }}>
-            Secret ballots need a wallet with its own key, so this Safe cannot cast one. Bonded and vesting FOLD cannot
-            be delegated; only FOLD locked in the escrow can.
-          </span>
-        </div>
-      )}
       {v.escrowLocked > 0n && (
         <div className="if-unlock__row">
           <span className="if-unlock__held">
