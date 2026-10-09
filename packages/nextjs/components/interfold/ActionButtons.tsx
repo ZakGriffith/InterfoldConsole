@@ -17,8 +17,11 @@ type Props = {
   /** The gating read is already satisfied: show `doneLabel`, disable, reset stale status. */
   done?: boolean;
   doneLabel?: string;
-  /** Owner-only calls require the connected wallet to be the owner; operator calls require the hot wallet. */
-  requires?: "owner" | "connected";
+  /**
+   * Owner-only calls require the connected wallet to be the owner; operator calls require the hot
+   * wallet; permissionless calls ("any") just need some wallet on mainnet.
+   */
+  requires?: "owner" | "connected" | "any";
 };
 
 /**
@@ -52,7 +55,9 @@ export const ActionButtons = ({
           ? "Switch the wallet to Ethereum mainnet."
           : `Connected wallet is not the bond owner ${shortAddr(owner)}.`
       : !connected
-        ? "Connect the node hot wallet to send this."
+        ? requires === "any"
+          ? "Connect any wallet to send this."
+          : "Connect the node hot wallet to send this."
         : "Switch the wallet to Ethereum mainnet.";
 
   const gated = !!disabled && !(queueMode && isSafe);

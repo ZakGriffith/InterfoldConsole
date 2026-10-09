@@ -41,6 +41,9 @@ export const REFUND_MANAGER = {
   abi: parseAbi([
     "function pendingHeldSuccessReward(uint256 e3Id, address account) view returns (uint256)",
     "function claimHeldSuccessReward(uint256 e3Id) returns (uint256)",
+    // Permissionless: pays the operator's snapshotted bond owner whoever sends it.
+    "function claimOperatorHeldSuccessReward(uint256 e3Id, address operator) returns (uint256)",
+    "function operatorHeldRewards(uint256 e3Id, address operator) view returns (uint256 heldSuccess, uint256 heldSlash)",
     "event SuccessRewardHeld(uint256 indexed e3Id, address indexed operator, address indexed token, uint256 amount)",
     "event RewardRecipientSnapshotted(uint256 indexed e3Id, address indexed operator, address indexed recipient)",
     "event HeldSuccessRewardClaimed(uint256 indexed e3Id, address indexed account, address indexed token, uint256 amount)",
@@ -109,8 +112,5 @@ export const explorerTx = (h: string) => `${LINKS.explorer}/tx/${h}`;
 export const safeQueue = (safe: string) => `${LINKS.safeApp}/transactions/queue?safe=eth:${safe}`;
 export const safeTx = (safe: string, safeTxHash: string) =>
   `${LINKS.safeApp}/transactions/tx?safe=eth:${safe}&id=multisig_${safe}_${safeTxHash}`;
-/** This console opened as a Safe App for `safe`, so the Safe itself can sign owner-only calls. */
-export const safeOpenConsole = (safe: string) =>
-  `${LINKS.safeApp}/apps/open?safe=eth:${safe}&appUrl=${encodeURIComponent(LINKS.console)}`;
 export const safeTxBuilder = (safe: string) =>
   `${LINKS.safeApp}/apps/open?safe=eth:${safe}&appUrl=https%3A%2F%2Fapps-portal.safe.global%2Ftx-builder`;

@@ -93,7 +93,7 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
       </div>
       {primary && <UnlockStrip owner={s.owner} />}
       <VotesStrip owner={s.owner} primary={primary} />
-      <RewardsStrip owner={s.owner} isContract={isContract} primary={primary} />
+      <RewardsStrip owner={s.owner} />
     </section>
   );
 };

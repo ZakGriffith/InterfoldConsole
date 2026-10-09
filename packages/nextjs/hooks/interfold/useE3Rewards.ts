@@ -37,10 +37,11 @@ export type OwnerE3Reward = {
   e3Id: bigint;
   num: number;
   token: Address;
-  operators: string[];
+  /** Each of the owner's committee members on this E3 and what its share still holds (undefined until read). */
+  operators: { address: Address; claimable?: bigint }[];
   earned: bigint;
   claimed: bigint;
-  /** From pendingHeldSuccessReward; undefined until read. */
+  /** Sum of the operators' held shares; undefined until every one is read. */
   claimable?: bigint;
 };
 
@@ -109,28 +110,35 @@ export const useE3Rewards = (owner?: Address) => {
   const me = owner?.toLowerCase();
   const mine = me ? (ledger.data?.held ?? []).filter(h => h.recipient === me) : [];
   const e3Ids = [...new Set(mine.map(h => h.e3Id))];
-  const pending = useReadContracts({
-    contracts: e3Ids.map(e3Id => ({
+  // One read per committee member: its held share is what the permissionless per-operator claim pays out.
+  const held = useReadContracts({
+    contracts: mine.map(h => ({
       address: REFUND_MANAGER.address,
       abi: REFUND_MANAGER.abi,
-      functionName: "pendingHeldSuccessReward",
-      args: [e3Id, owner!],
+      functionName: "operatorHeldRewards",
+      args: [h.e3Id, h.operator as Address],
       chainId: CHAIN_ID,
     })),
-    query: { enabled: !!owner && e3Ids.length > 0, refetchInterval: PENDING_POLL_MS, staleTime: PENDING_POLL_MS / 2 },
+    query: { enabled: !!owner && mine.length > 0, refetchInterval: PENDING_POLL_MS, staleTime: PENDING_POLL_MS / 2 },
   });
+  const heldOf = (h: HeldReward) => {
+    const r = held.data?.[mine.indexOf(h)];
+    return r?.status === "success" ? (r.result as readonly [bigint, bigint])[0] : undefined;
+  };
 
-  const byE3: OwnerE3Reward[] = e3Ids.map((e3Id, i) => {
+  const byE3: OwnerE3Reward[] = e3Ids.map(e3Id => {
     const shares = mine.filter(h => h.e3Id === e3Id);
-    const r = pending.data?.[i];
+    const operators = shares.map(h => ({ address: h.operator as Address, claimable: heldOf(h) }));
     return {
       e3Id,
       num: shares[0].num,
       token: shares[0].token,
-      operators: shares.map(h => h.operator),
+      operators,
       earned: shares.reduce((sum, h) => sum + h.amount, 0n),
       claimed: ledger.data?.claimed[`${e3Id}:${me}`] ?? 0n,
-      claimable: r?.status === "success" ? (r.result as bigint) : undefined,
+      claimable: operators.every(o => o.claimable !== undefined)
+        ? operators.reduce((sum, o) => sum + (o.claimable ?? 0n), 0n)
+        : undefined,
     };
   });
   const earned = byE3.reduce((sum, e) => sum + e.earned, 0n);
