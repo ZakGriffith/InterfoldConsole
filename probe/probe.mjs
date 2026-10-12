@@ -24,7 +24,7 @@ import { peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr } from "@multiformats/multiaddr";
 
 const MAINNET_NETWORK_ID = "c3e81f904b0a8129dce0a85a8d48958a3ca5ee3aea6c32b623fcf66b35728acb"; // sha256("interfold:p2p-network:v1:mainnet")
-const PROTOCOL_VERSION = 4; // crates/config/protocol-release.toml
+const PROTOCOL_VERSION = 8; // crates/config/protocol-release.toml (v0.19.0 cutover; 4 until v0.18.0)
 const INTERFOLD_MAINNET = "28cF63B459e6218C69EA97ea7D90541cf648c715"; // deployments/manifest.json -> mainnet.contracts.interfold
 const BOOTSTRAP_DNSADDR = "bootstrap.interfold.network";
 const BOOTSTRAP_FALLBACK = "/ip4/34.192.113.100/udp/9501/quic-v1/p2p/12D3KooWKaXTrbunmUXgnFfDJohaadYxx3QR3MCz9Am8VAV5w3QL";
@@ -47,7 +47,8 @@ const deploymentFingerprint = () => {
 const prefix = `interfold/${MAINNET_NETWORK_ID}/protocol/${PROTOCOL_VERSION}`;
 const IDENTIFY_PROTOCOL = `${prefix}/deployments/${deploymentFingerprint()}/1`;
 const KAD_PROTOCOL = `/${prefix}/kad/1.0.0`;
-const ADVERTISED = [KAD_PROTOCOL, `/${prefix}/sync/3.0.0`, `/${prefix}/sync/2.0.0`];
+// A v0.19.0 node accepts a peer only if it speaks kad plus the one sync protocol at SYNC_WIRE_MAJOR (4).
+const ADVERTISED = [KAD_PROTOCOL, `/${prefix}/sync/4.0.0`];
 
 const isIp = (h) => /^\d+\.\d+\.\d+\.\d+$/.test(h);
 const hostAddr = ({ host, port }) => multiaddr(`/${isIp(host) ? "ip4" : "dns4"}/${host}/udp/${port ?? 9091}/quic-v1`);

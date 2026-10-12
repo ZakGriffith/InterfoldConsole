@@ -84,17 +84,28 @@ export const softwarePill = (
       sub: ago(n.checkedAt),
       title: `The network knows this node, so it is running, but nothing answered from outside: forward its UDP port (9091 by default) on the router and allow it in the host firewall. Dialed: ${[...(n.addrs ?? []), ...(n.tried ?? [])].join(", ") || "none"}`,
     };
+  if (!n.ok && n.stage === "identify" && n.error === "connection closed")
+    return {
+      label: "no answer",
+      kind: "bad",
+      sub: ago(n.checkedAt),
+      title: `The node accepted the connection, then hung up during identify. A node on an older protocol version does this to a current-release peer${report.latestRelease ? `: upgrade it to ${report.latestRelease}` : ""}.`,
+    };
   if (!n.ok) return { label: "no answer", kind: "bad", sub: ago(n.checkedAt), title: n.error };
   const v = n.version ?? n.agentVersion ?? "unknown";
   const behind = !!report.latestRelease && !!n.version && n.version !== report.latestRelease;
-  if (n.sameNetwork === false)
+  // An older release speaks the previous protocol version, so it also fails the network match; that is an upgrade, not a misconfiguration.
+  if (n.sameNetwork === false && !behind)
     return { label: `${v} · wrong network`, kind: "bad", sub: ago(n.checkedAt), title: n.agentVersion ?? undefined };
   if (behind)
     return {
       label: `${v} · upgrade to ${report.latestRelease}`,
-      kind: "warn",
+      kind: n.sameNetwork === false ? "bad" : "warn",
       sub: ago(n.checkedAt),
-      title: n.agentVersion ?? undefined,
+      title:
+        n.sameNetwork === false
+          ? `${n.agentVersion ?? v} speaks an older protocol version than ${report.latestRelease}, so the current network will not keep it as a peer.`
+          : (n.agentVersion ?? undefined),
     };
   return { label: v, kind: "published", sub: ago(n.checkedAt), title: n.agentVersion ?? undefined };
 };
