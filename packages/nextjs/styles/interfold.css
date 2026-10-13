@@ -1863,3 +1863,35 @@ dialog.if-modal::backdrop {
   gap: 8px;
   white-space: nowrap;
 }
+
+/* E3s tab: the unfolded row, four blocks side by side, wrapping on narrow screens */
+.if-e3-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px 32px;
+  padding: 6px 0 2px;
+}
+.if-e3-block {
+  min-width: 0;
+}
+.if-e3-block .if-dl {
+  grid-template-columns: minmax(96px, 140px) minmax(0, 1fr);
+  gap: 7px 14px;
+  max-width: none;
+}
+.if-e3-block .if-dl dd {
+  font-size: 12.5px;
+}
+.if-e3-block .if-dl dd .if-stat__sub {
+  font-size: 11.5px;
+}
+.if-e3-block .if-table-wrap {
+  background: transparent;
+}
+.if-e3-block .if-table td,
+.if-e3-block .if-table th {
+  padding: 7px 10px;
+}
+.if-table tbody tr[aria-expanded="true"] td {
+  border-bottom: 0;
+}

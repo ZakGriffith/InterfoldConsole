@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { E3History, e3Pill } from "./E3History";
+import Link from "next/link";
+import { e3Pill } from "./e3Duty";
 import { AddressLink, Badge, type BadgeKind, Empty, Note } from "./ui";
 import { type Address, parseEther } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
@@ -381,18 +382,8 @@ export const FleetToolbar = ({
 };
 
 /** Probe footnote, E3 history and the RPC warning, once under all the lists. */
-export const FleetNotes = ({
-  operators,
-  labels,
-  logsFailed,
-}: {
-  operators: Address[];
-  labels: Record<string, string>;
-  logsFailed: boolean;
-}) => {
+export const FleetNotes = ({ operators, logsFailed }: { operators: Address[]; logsFailed: boolean }) => {
   const probe = useNodeProbe();
-  const e3 = useE3Activity();
-  const showE3 = !!e3.data && !e3.failed;
   return (
     <>
       {operators.length > 0 && probe.report && (
@@ -410,7 +401,14 @@ export const FleetNotes = ({
             " The last probe report is older than 45 minutes, so the scheduler that triggers it is running late; the nodes themselves may be fine."}
         </p>
       )}
-      {showE3 && e3.data && <E3History activity={e3.data} paused={e3.paused} operators={operators} labels={labels} />}
+      <p className="if-stat__sub" style={{ margin: 0 }}>
+        E3 duty column: the last {E3_WINDOW_DAYS} days of committees each node sat on. Every E3 since launch, with its
+        committee, timing and payment, is on the{" "}
+        <Link href="/e3s" className="if-link">
+          E3s tab
+        </Link>
+        .
+      </p>
       {logsFailed && (
         <Note kind="warn">
           The RPC refused the event scan, so only Safe history and manually added nodes are listed. Set{" "}

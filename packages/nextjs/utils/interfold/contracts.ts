@@ -22,12 +22,54 @@ export const INTERFOLD = {
   /** Proxy's first event (25,786,382), rounded down. */
   deployedOnBlock: 25_786_000n,
   abi: parseAbi([
+    // IE3.sol. `requestBlock` is a unix timestamp (EIP-6372 clock), despite the name.
+    "struct E3 { uint256 seed; uint8 committeeSize; uint256 requestBlock; uint256[2] inputWindow; bytes32 encryptionSchemeId; address e3Program; uint8 paramSet; bytes customParams; address decryptionVerifier; address pkVerifier; bytes32 committeePublicKey; bytes32 ciphertextOutput; bytes plaintextOutput; address requester; bytes32 ciphertextCommitment; }",
+    "struct E3Deadlines { uint256 dkgDeadline; uint256 computeDeadline; uint256 decryptionDeadline; }",
     "function requestsPaused() view returns (bool)",
+    "function activeE3Count() view returns (uint256)",
+    "function getE3Stage(uint256 e3Id) view returns (uint8)",
+    "function getDeadlines(uint256 e3Id) view returns (E3Deadlines deadlines)",
+    "function getE3LifecycleDeadline(uint256 e3Id) view returns (uint256)",
+    "function checkFailureCondition(uint256 e3Id) view returns (bool canFail, uint8 reason)",
+    "event E3Requested(uint256 e3Id, E3 e3, bytes32 indexed cryptoConfigId)",
     "event E3StageChanged(uint256 indexed e3Id, uint8 previousStage, uint8 newStage)",
     "event E3Failed(uint256 indexed e3Id, uint8 failedAtStage, uint8 reason)",
+    "event E3FailureReclassified(uint256 indexed e3Id, uint8 previousReason, uint8 reason)",
+    "event E3FailureProcessed(uint256 indexed e3Id, uint256 paymentAmount, uint256 honestNodeCount)",
+    "event CommitteeFinalized(uint256 indexed e3Id)",
+    "event CommitteeFormed(uint256 indexed e3Id)",
+    "event CiphertextOutputReferencePublished(uint256 indexed e3Id, bytes32 contentHash, bytes32 ciphertextCommitment, uint32 availabilityBlock, uint128 availabilityLeafIndex)",
+    "event CiphertextOutputPublished(uint256 indexed e3Id, bytes ciphertextOutput, bytes32 ciphertextCommitment)",
+    "event RewardsDistributed(uint256 indexed e3Id, address[] nodes, uint256[] amounts)",
+    "event RewardClaimed(uint256 indexed e3Id, address indexed account, address indexed token, uint256 amount)",
+    "event TreasuryCredited(uint256 indexed e3Id, address indexed treasury, address indexed token, uint256 amount)",
     "event RequestsPausedSet(bool paused)",
   ]),
 } as const;
+
+/**
+ * CiphernodeRegistry (deployments/manifest.json -> mainnet.contracts.ciphernode_registry): runs
+ * sortition for each E3. Tickets, the finalized committee and expulsions are its events; the
+ * bonding registry mirrors them as committee obligations.
+ */
+export const CIPHERNODE_REGISTRY = {
+  address: "0xC927A5B2d8F68697bC28C0670df05178c93df2d7",
+  deployedOnBlock: 25_786_000n,
+  abi: parseAbi([
+    "event CommitteeRandomnessRequested(uint256 indexed e3Id, uint256 indexed requestId, address indexed provider, uint256 randomnessDeadline)",
+    "event TicketSubmitted(uint256 indexed e3Id, address indexed node, uint256 ticketId, uint256 score)",
+    "event SortitionCommitteeFinalized(uint256 indexed e3Id, address[] committee, uint256[] scores)",
+    "event CommitteeFormationFailed(uint256 indexed e3Id, uint256 nodesSubmitted, uint256 thresholdRequired)",
+    "event CommitteeMemberExpelled(uint256 indexed e3Id, address indexed node, bytes32 reason, uint256 activeCountAfter)",
+    "event CommitteeViabilityUpdated(uint256 indexed e3Id, uint256 activeCount, uint256 thresholdM, bool viable)",
+  ]),
+} as const;
+
+/** E3 programs seen on mainnet, by lower-cased address. Everything else shows as its address. */
+export const E3_PROGRAMS: Record<string, string> = {
+  // Sourcify: project/contracts/CRISPProgram.sol (Interfold governance's secret ballots).
+  "0x53fcdb21e73a461cfe6c64b19855204384b91ba3": "CRISP vote",
+};
 
 /**
  * E3RefundManager (deployments/manifest.json -> mainnet.contracts.refundManager; impl verified on

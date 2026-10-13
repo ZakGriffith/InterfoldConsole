@@ -32,12 +32,13 @@ export type FleetSection = {
   totalBonded: bigint;
 };
 
+export type FleetList = Omit<FleetSection, "nodeCount" | "eligible" | "totalBonded">;
+
 /**
- * The Fleet page's data for several bond owners at once: one discovery query per owner (shared
- * with the Watch page), manual nodes and labels from localStorage, and one status multicall for
- * every operator across all sections.
+ * Who runs nodes for each bond owner: one discovery query per owner plus this browser's manual
+ * nodes and labels. No status reads, so pages that only need names (the E3s tab) stay cheap.
  */
-export const useFleet = (owners: readonly Address[]) => {
+export const useFleetLists = (owners: readonly Address[]) => {
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
   const discoveries = useQueries({
     queries: owners.map(owner => ({
@@ -78,6 +79,25 @@ export const useFleet = (owners: readonly Address[]) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [owners, stamp, storeVersion],
   );
+  const refetch = useCallback(() => {
+    discoveries.forEach(d => d.refetch());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stamp]);
+
+  return {
+    lists: lists as FleetList[],
+    refetch,
+    isDiscovering: discoveries.some(d => d.isLoading || d.isFetching),
+    lastScan: Math.max(0, ...discoveries.map(d => d.dataUpdatedAt)),
+  };
+};
+
+/**
+ * The Fleet page's data for several bond owners at once: the lists above plus one status
+ * multicall for every operator across all sections.
+ */
+export const useFleet = (owners: readonly Address[]) => {
+  const { lists, refetch, isDiscovering, lastScan } = useFleetLists(owners);
 
   const allOperators = useMemo(() => {
     const seen = new Set<string>();
@@ -128,17 +148,12 @@ export const useFleet = (owners: readonly Address[]) => {
       readJson<string[]>(manualKey(owner), []).filter(x => !sameAddr(x, op)),
     );
   }, []);
-  const refetch = useCallback(() => {
-    discoveries.forEach(d => d.refetch());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stamp]);
-
   return {
     sections,
     statuses: fleet.statuses,
     statusLoading: fleet.isLoading,
-    isDiscovering: discoveries.some(d => d.isLoading || d.isFetching),
-    lastScan: Math.max(0, ...discoveries.map(d => d.dataUpdatedAt)),
+    isDiscovering,
+    lastScan,
     refetch,
     setLabel,
     addManual,

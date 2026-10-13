@@ -261,7 +261,7 @@ export const useE3Activity = () => {
   };
 };
 
-export const e3Outcome = (e3: E3): string => {
+export const e3Outcome = (e3: Pick<E3, "stage" | "failedAtStage" | "reason">): string => {
   if (e3.stage === E3_FAILED)
     return `failed: ${E3_FAILURE_REASON[e3.reason ?? 0] ?? `reason ${e3.reason}`} (while ${E3_STAGE[e3.failedAtStage ?? 0] ?? `stage ${e3.failedAtStage}`})`;
   return E3_STAGE[e3.stage] ?? `stage ${e3.stage}`;

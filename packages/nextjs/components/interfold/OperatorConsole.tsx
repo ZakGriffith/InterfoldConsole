@@ -152,7 +152,6 @@ const Inner = () => {
 
   const selectedSection = selected && fleet.sections.find(s => sameAddr(s.owner, selected.owner));
   const allOperators = fleet.sections.flatMap(s => s.operators);
-  const allLabels = Object.assign({}, ...fleet.sections.map(s => s.labels)) as Record<string, string>;
 
   return (
     <main className="if-main" style={{ gap: 28 }}>
@@ -213,7 +212,7 @@ const Inner = () => {
 
       <NetworkOwners />
 
-      <FleetNotes operators={allOperators} labels={allLabels} logsFailed={fleet.sections.some(s => s.logsFailed)} />
+      <FleetNotes operators={allOperators} logsFailed={fleet.sections.some(s => s.logsFailed)} />
     </main>
   );
 };
