@@ -69,8 +69,8 @@ const Who = ({ address, mine }: { address: string; mine: Mine }) => {
   );
 };
 
-const Block = ({ title, children }: { title: string; children: ReactNode }) => (
-  <div className="if-e3-block">
+const Block = ({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) => (
+  <div className={wide ? "if-e3-block if-e3-block--wide" : "if-e3-block"}>
     <div className="if-eyebrow" style={{ marginBottom: 6 }}>
       {title}
     </div>
@@ -253,6 +253,7 @@ const Detail = ({ e3, live, mine, held, heldClaimed }: DetailProps) => {
         <Dl items={params} />
       </Block>
       <Block
+        wide
         title={
           e3.committee.length
             ? `Committee: ${e3.committee.length} nodes, picked from ${uniqueTickets} tickets`
@@ -430,7 +431,7 @@ const Inner = () => {
         <Empty>No E3 has been requested on mainnet yet.</Empty>
       ) : (
         <div className="if-table-wrap">
-          <table className="if-table">
+          <table className="if-table if-e3-table">
             <thead>
               <tr>
                 <th>E3</th>
@@ -481,7 +482,7 @@ const Inner = () => {
                       </td>
                       <td title={iso(e3.requestedAt)}>
                         {ago(iso(e3.requestedAt))}
-                        <div className="if-stat__sub">{fmtDate(e3.requestedAt)}</div>
+                        <div className="if-stat__sub if-nowrap">{fmtDate(e3.requestedAt)}</div>
                       </td>
                       <td>
                         {programName(e3.program) ?? <AddressLink address={e3.program} />}
@@ -520,7 +521,7 @@ const Inner = () => {
                         </div>
                       </td>
                       <td className="if-num">
-                        {fmtTokens(e3.payment, sym)}
+                        <span className="if-nowrap">{fmtTokens(e3.payment, sym)}</span>
                         <div className="if-stat__sub" style={{ fontFamily: "var(--if-sans)" }}>
                           {e3.rewards
                             ? `${fmtTokens(e3.rewards.amounts[0], sym)} per node · ${claimedShares}/${e3.rewards.nodes.length} claimed`

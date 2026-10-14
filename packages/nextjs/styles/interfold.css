@@ -1874,6 +1874,26 @@ dialog.if-modal::backdrop {
 .if-e3-block {
   min-width: 0;
 }
+/* The committee list is 19 rows of three columns: give it the whole width under the summary blocks. */
+.if-e3-block--wide {
+  grid-column: 1 / -1;
+}
+/*
+ * The E3 list must fit the card: its sub lines ("12 d ago, 7d after the request", "18 USDS per node ·
+ * 0/19 claimed") may wrap. Otherwise the table overflows sideways and the unfolded detail, laid out in
+ * that overflowing width, parks the committee block off the right edge.
+ */
+.if-e3-table td {
+  white-space: normal;
+}
+.if-e3-table tr[aria-expanded] > td .if-cell-inline,
+.if-e3-table tr[aria-expanded] > td .if-mono,
+.if-nowrap {
+  white-space: nowrap;
+}
+.if-e3-table tr[aria-expanded] > td .if-badge {
+  white-space: normal;
+}
 .if-e3-block .if-dl {
   grid-template-columns: minmax(96px, 140px) minmax(0, 1fr);
   gap: 7px 14px;
