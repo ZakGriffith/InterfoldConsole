@@ -394,6 +394,7 @@ export const FleetToolbar = ({
           {probeRun.isPending ? "Starting…" : probeRun.queued ? "Probe queued" : "Re-probe now"}
         </button>
       )}
+      {probeRun.error && !probeRun.isPending && <span className="if-action__hint">{probeRun.error.message}</span>}
       <button
         type="button"
         className="if-btn if-btn--ghost if-btn--sm"
