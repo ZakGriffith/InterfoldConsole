@@ -7,10 +7,12 @@ import { AddressLink, Badge } from "./ui";
 import { type Address } from "viem";
 import { useBytecode, useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
+import { useDrawOdds } from "~~/hooks/interfold/useDrawOdds";
 import { type FleetSection } from "~~/hooks/interfold/useFleet";
 import { useOwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { CHAIN_ID, safeQueue } from "~~/utils/interfold/contracts";
 import { fmtTokens, isContractCode, sameAddr } from "~~/utils/interfold/format";
+import { fmtOdds } from "~~/utils/interfold/odds";
 
 type Props = {
   section: FleetSection;
@@ -26,6 +28,8 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
   const { data: code } = useBytecode({ address: s.owner, chainId: CHAIN_ID });
   const isContract = isContractCode(code);
   const { data: f } = useOwnerFunds(s.owner);
+  const odds = useDrawOdds();
+  const ownerOdds = odds.byOwner[s.owner.toLowerCase()];
 
   const isConnectedOwner = sameAddr(connected, s.owner);
   const via = connMode === "safe-app" ? "Safe App" : connMode === "safe-wc" ? "WalletConnect" : undefined;
@@ -84,6 +88,15 @@ export const BondOwnerCard = ({ section: s, primary, onRemove }: Props) => {
         <div className="if-owner__stat">
           <span className="if-owner__value if-mono">{fmtTokens(f?.susdsBalance)}</span>
           <span className="if-owner__label">sUSDS</span>
+        </div>
+        <div
+          className="if-owner__stat"
+          title={`Chance one of this owner's nodes gets a seat in the next E3 (${odds.seats} seats, at most one per owner, if all ${odds.pool.owners} eligible owners enter). More tickets across its nodes raise it.`}
+        >
+          <span className="if-owner__value if-mono">
+            {odds.ready ? (ownerOdds !== undefined ? fmtOdds(ownerOdds) : "0%") : "…"}
+          </span>
+          <span className="if-owner__label">draw odds</span>
         </div>
         {isContract && (
           <a className="if-btn if-btn--ghost if-btn--sm" href={safeQueue(s.owner)} target="_blank" rel="noreferrer">

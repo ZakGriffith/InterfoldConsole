@@ -6,11 +6,13 @@ import { e3Pill } from "./e3Duty";
 import { AddressLink, Badge, type BadgeKind, Empty, Note } from "./ui";
 import { type Address, parseEther } from "viem";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
+import { useDrawOdds } from "~~/hooks/interfold/useDrawOdds";
 import { E3_WINDOW_DAYS, useE3Activity } from "~~/hooks/interfold/useE3Activity";
 import { type OperatorSource } from "~~/hooks/interfold/useFleet";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type ProbeNode, type ProbeReport, ago, useNodeProbe, useProbeRun } from "~~/hooks/interfold/useNodeProbe";
 import { fmtEth, fmtTokens, sameAddr } from "~~/utils/interfold/format";
+import { fmtOdds } from "~~/utils/interfold/odds";
 
 export const LOW_ETH = parseEther("0.01");
 
@@ -200,6 +202,7 @@ export const FleetTable = ({
   const probe = useNodeProbe();
   const e3 = useE3Activity();
   const showE3 = !!e3.data && !e3.failed;
+  const odds = useDrawOdds();
 
   const pills = Object.fromEntries(
     operators.map(op => [
@@ -247,7 +250,12 @@ export const FleetTable = ({
               </th>
             )}
             <th className="if-num">Bond</th>
-            <th className="if-num">Tickets</th>
+            <th
+              className="if-num"
+              title={`Sortition tickets, then the node's chance of a seat in the next E3 if every eligible node enters: ${odds.seats} seats, at most one per bond owner, lowest ticket score wins. A node's chance is its owner's chance times its share of the owner's tickets.`}
+            >
+              Tickets · odds
+            </th>
             <th className="if-num">Hot wallet ETH</th>
           </tr>
         </thead>
@@ -318,7 +326,26 @@ export const FleetTable = ({
                   {s ? fmtTokens(s.bond) : "-"}
                   {p && <span className="if-stat__of"> / {fmtTokens(p.requiredCiphernodeBond)}</span>}
                 </td>
-                <td className="if-num">{s ? s.availableTickets.toString() : "-"}</td>
+                <td
+                  className="if-num"
+                  title={
+                    odds.byOperator[k] !== undefined && s
+                      ? `Draw odds: owner ${fmtOdds(odds.byOwner[s.bondOwner.toLowerCase()])} × this node's ${s.availableTickets.toString()} of the owner's tickets`
+                      : s && !s.isActive
+                        ? "Not eligible, so not in the draw"
+                        : s && s.availableTickets === 0n
+                          ? "No tickets, so not in the draw"
+                          : undefined
+                  }
+                >
+                  {s ? s.availableTickets.toString() : "-"}
+                  {s && odds.ready && (
+                    <span className="if-stat__of">
+                      {" "}
+                      · {odds.byOperator[k] !== undefined ? fmtOdds(odds.byOperator[k]) : "0%"}
+                    </span>
+                  )}
+                </td>
                 <td
                   className="if-num"
                   style={lowEth ? { color: "var(--if-bad-ink)" } : undefined}
@@ -384,6 +411,7 @@ export const FleetToolbar = ({
 /** Probe footnote, E3 history and the RPC warning, once under all the lists. */
 export const FleetNotes = ({ operators, logsFailed }: { operators: Address[]; logsFailed: boolean }) => {
   const probe = useNodeProbe();
+  const odds = useDrawOdds();
   return (
     <>
       {operators.length > 0 && probe.report && (
@@ -410,6 +438,9 @@ export const FleetNotes = ({ operators, logsFailed }: { operators: Address[]; lo
           E3s tab
         </Link>
         .
+      </p>
+      <p className="if-stat__sub" style={{ margin: 0 }}>
+        {`Draw odds: each E3 seats ${odds.seats} nodes, at most one per bond owner. Every eligible node submits its lowest-scoring ticket and the ${odds.seats} lowest scores win, so an owner's chance grows with the tickets across all its nodes, and inside an owner the seat goes to whichever node drew lowest. Computed as if all ${odds.pool.nodes} eligible nodes (${odds.pool.owners} owners, ${odds.pool.tickets} tickets) enter; nodes that are down miss the draw, which raises everyone else's odds.`}
       </p>
       {logsFailed && (
         <Note kind="warn">

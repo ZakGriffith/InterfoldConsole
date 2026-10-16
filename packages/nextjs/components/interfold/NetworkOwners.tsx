@@ -5,14 +5,20 @@ import { AddressLink, Empty, Note } from "./ui";
 import { type Address } from "viem";
 import { useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
+import { useDrawOdds } from "~~/hooks/interfold/useDrawOdds";
 import { type NetworkOwner, useNetworkOwners } from "~~/hooks/interfold/useNetworkOwners";
 import { fmtTokens, sameAddr } from "~~/utils/interfold/format";
+import { fmtOdds } from "~~/utils/interfold/odds";
 
-type SortKey = "nodes" | "tickets" | "bonded";
+type SortKey = "nodes" | "tickets" | "odds" | "bonded";
 
-const cmp = (a: NetworkOwner, b: NetworkOwner, key: SortKey) => {
+const cmp = (a: NetworkOwner, b: NetworkOwner, key: SortKey, odds: Record<string, number>) => {
+  if (key === "odds") {
+    const d = (odds[b.owner.toLowerCase()] ?? 0) - (odds[a.owner.toLowerCase()] ?? 0);
+    if (d !== 0) return d > 0 ? 1 : -1;
+  }
   const d =
-    key === "nodes" ? BigInt(b.nodes - a.nodes) : key === "tickets" ? b.tickets - a.tickets : b.bonded - a.bonded;
+    key === "nodes" ? BigInt(b.nodes - a.nodes) : key === "bonded" ? b.bonded - a.bonded : b.tickets - a.tickets;
   if (d !== 0n) return d > 0n ? 1 : -1;
   return b.nodes - a.nodes || (b.tickets > a.tickets ? 1 : b.tickets < a.tickets ? -1 : 0);
 };
@@ -21,13 +27,14 @@ const cmp = (a: NetworkOwner, b: NetworkOwner, key: SortKey) => {
 export const NetworkOwners = () => {
   const { owners: tracked, addOwner, removeOwner } = useConsole();
   const net = useNetworkOwners();
+  const odds = useDrawOdds();
   const [sort, setSort] = useState<SortKey>("tickets");
   const [onlyTracked, setOnlyTracked] = useState(false);
 
   const rows = useMemo(() => {
     const list = onlyTracked ? net.owners.filter(o => tracked.some(t => sameAddr(t, o.owner))) : net.owners;
-    return [...list].sort((a, b) => cmp(a, b, sort));
-  }, [net.owners, sort, onlyTracked, tracked]);
+    return [...list].sort((a, b) => cmp(a, b, sort, odds.byOwner));
+  }, [net.owners, sort, onlyTracked, tracked, odds.byOwner]);
 
   const totals = net.owners.reduce(
     (t, o) => ({ nodes: t.nodes + o.nodes, eligible: t.eligible + o.eligible, tickets: t.tickets + o.tickets }),
@@ -88,6 +95,11 @@ export const NetworkOwners = () => {
                 <th>Bond owner</th>
                 {th("nodes", "Nodes", "Nodes this owner funds today (eligible / total). Click to sort.")}
                 {th("tickets", "Tickets", "Sortition tickets across its nodes. Click to sort.")}
+                {th(
+                  "odds",
+                  "Draw odds",
+                  `Chance of a seat in the next E3: ${odds.seats} seats, at most one per owner, if every eligible node enters. Click to sort.`,
+                )}
                 {th("bonded", "FOLD bonded", "FOLD collateral across its nodes. Click to sort.")}
                 <th />
               </tr>
@@ -97,6 +109,7 @@ export const NetworkOwners = () => {
                 <OwnerRow
                   key={o.owner}
                   row={o}
+                  odds={odds.ready ? fmtOdds(odds.byOwner[o.owner.toLowerCase()] ?? 0) : "…"}
                   tracked={tracked.some(t => sameAddr(t, o.owner))}
                   onTrack={addOwner}
                   onUntrack={removeOwner}
@@ -112,11 +125,13 @@ export const NetworkOwners = () => {
 
 const OwnerRow = ({
   row: o,
+  odds,
   tracked,
   onTrack,
   onUntrack,
 }: {
   row: NetworkOwner;
+  odds: string;
   tracked: boolean;
   onTrack: (a: Address) => void;
   onUntrack: (a: Address) => void;
@@ -135,6 +150,7 @@ const OwnerRow = ({
         <span className="if-stat__of"> / {o.nodes}</span>
       </td>
       <td className="if-num">{o.tickets.toString()}</td>
+      <td className="if-num">{odds}</td>
       <td className="if-num">{fmtTokens(o.bonded)}</td>
       <td className="if-num">
         <button

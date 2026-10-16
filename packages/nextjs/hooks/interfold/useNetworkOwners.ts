@@ -53,6 +53,8 @@ export const useNetworkOwners = () => {
   return {
     owners,
     operatorCount: operators.length,
+    /** Every operator's registry status, lower-cased key; the per-node input to the draw odds. */
+    statuses: fleet.statuses,
     isLoading: q.isLoading || (operators.length > 0 && fleet.isLoading),
     logsFailed: q.data?.logsFailed ?? false,
     error: q.error ?? undefined,
