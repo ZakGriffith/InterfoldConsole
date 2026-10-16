@@ -241,7 +241,7 @@ export const FleetTable = ({
             )}
             {showE3 && (
               <th
-                title={`Committees this node sat on in the last ${E3_WINDOW_DAYS} days (completed / finished), from the Interfold contract's E3 events. Hover a cell for the list.`}
+                title={`Where each node stood on the newest E3 (in committee, ticket in, not selected, no ticket), and below it how many committees it was fully selected for in the last ${E3_WINDOW_DAYS} days completed. Hover a cell for the list.`}
               >
                 E3 duty
               </th>
@@ -259,7 +259,7 @@ export const FleetTable = ({
             const manualOnly = (sources[k] ?? []).length === 1 && sources[k][0] === "manual";
             const lowEth = s ? s.ethBalance < LOW_ETH : false;
             const sw = softwarePill(probe.byOperator[k], probe.report, probe.stale);
-            const duty = e3Pill(e3.byOperator[k] ?? [], e3.data?.e3s.length ?? 0);
+            const duty = e3Pill(e3.byOperator[k] ?? [], e3.latest, e3.data?.e3s.length ?? 0);
             return (
               <tr key={op} className={sameAddr(op, selected) ? "if-row--on" : ""} onClick={() => onSelect(op)}>
                 {batchEnabled && (
@@ -402,8 +402,10 @@ export const FleetNotes = ({ operators, logsFailed }: { operators: Address[]; lo
         </p>
       )}
       <p className="if-stat__sub" style={{ margin: 0 }}>
-        E3 duty column: the last {E3_WINDOW_DAYS} days of committees each node sat on. Every E3 since launch, with its
-        committee, timing and payment, is on the{" "}
+        E3 duty column: the badge is the node&apos;s part in the newest E3 (every node that is up and holds tickets
+        enters the draw; sortition picks the committee). The line under it counts the committees it was selected for in
+        the last {E3_WINDOW_DAYS} days and how many of those completed. Every E3 since launch, with its committee,
+        timing and payment, is on the{" "}
         <Link href="/e3s" className="if-link">
           E3s tab
         </Link>

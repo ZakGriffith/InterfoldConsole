@@ -3,7 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { parseAbiItem } from "viem";
 import { usePublicClient, useReadContract } from "wagmi";
-import { CHAIN_ID, INTERFOLD, REGISTRY, REGISTRY_DEPLOYED_ON_BLOCK } from "~~/utils/interfold/contracts";
+import {
+  CHAIN_ID,
+  CIPHERNODE_REGISTRY,
+  INTERFOLD,
+  REGISTRY,
+  REGISTRY_DEPLOYED_ON_BLOCK,
+} from "~~/utils/interfold/contracts";
 import { scanLogs } from "~~/utils/interfold/discovery";
 
 /** IInterfold.E3Stage, in enum order. */
@@ -56,16 +62,26 @@ export type E3 = {
   obligated: string[];
   /** Operators drafted at request time but released before the committee was fixed. */
   candidates: string[];
+  /** Every node that answered sortition with a ticket (lower-cased), selected or not. */
+  tickets: string[];
 };
 
-/** How one operator relates to one E3. */
-export type E3Duty = { e3: E3; role: "committee" | "candidate"; obligated: boolean };
+/**
+ * How one operator relates to one E3. `ticket`: it entered sortition but is not in the committee,
+ * either because the draw went elsewhere or because the committee is still forming.
+ */
+export type E3Duty = { e3: E3; role: "committee" | "candidate" | "ticket"; obligated: boolean };
+/** E3Stage.CommitteeFormation: tickets are in, the draw has not been made. */
+export const E3_FORMING = 1;
 
 const STAGE_CHANGED = parseAbiItem("event E3StageChanged(uint256 indexed e3Id, uint8 previousStage, uint8 newStage)");
 const FAILED = parseAbiItem("event E3Failed(uint256 indexed e3Id, uint8 failedAtStage, uint8 reason)");
 const PAUSED_SET = parseAbiItem("event RequestsPausedSet(bool paused)");
 const OBLIGATION = parseAbiItem(
   "event CommitteeObligationUpdated(uint256 indexed e3Id, address indexed registry, address indexed operator, bool active)",
+);
+const TICKET = parseAbiItem(
+  "event TicketSubmitted(uint256 indexed e3Id, address indexed node, uint256 ticketId, uint256 score)",
 );
 const ZERO = "0x0000000000000000000000000000000000000000";
 /** Timestamps are one eth_getBlock each; only the newest E3s get them. */
@@ -96,7 +112,7 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
   const windowStart = latest > WINDOW_BLOCKS ? latest - WINDOW_BLOCKS : 0n;
   const since = (deployed: bigint) => (deployed > windowStart ? deployed : windowStart);
 
-  const [lifecycle, obligations] = await Promise.all([
+  const [lifecycle, obligations, tickets] = await Promise.all([
     scanLogs(
       (fromBlock, toBlock) =>
         client.getLogs({ address: INTERFOLD.address, events: [STAGE_CHANGED, FAILED, PAUSED_SET], fromBlock, toBlock }),
@@ -106,6 +122,13 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
     scanLogs(
       (fromBlock, toBlock) => client.getLogs({ address: REGISTRY.address, event: OBLIGATION, fromBlock, toBlock }),
       since(REGISTRY_DEPLOYED_ON_BLOCK),
+      latest,
+    ),
+    // One small log per node per E3. Always filtered by topic: the registry also logs ~350 KB of key chunks.
+    scanLogs(
+      (fromBlock, toBlock) =>
+        client.getLogs({ address: CIPHERNODE_REGISTRY.address, event: TICKET, fromBlock, toBlock }),
+      since(CIPHERNODE_REGISTRY.deployedOnBlock),
       latest,
     ),
   ]);
@@ -131,6 +154,7 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
         committee: [],
         obligated: [],
         candidates: [],
+        tickets: [],
       };
       byId.set(id, e3);
       if (log.eventName !== "E3StageChanged" || log.args.previousStage !== 0) partial.add(id);
@@ -180,6 +204,11 @@ const fetchActivity = async (client: NonNullable<ReturnType<typeof usePublicClie
     if (!e3 || e3.endBlock === undefined || log.args.active || log.blockNumber < e3.endBlock) continue;
     const op = log.args.operator!.toLowerCase();
     if (op !== ZERO && !e3.committee.includes(op)) e3.committee.push(op);
+  }
+  for (const log of tickets) {
+    const e3 = byId.get(log.args.e3Id!);
+    const op = log.args.node!.toLowerCase();
+    if (e3 && !e3.tickets.includes(op)) e3.tickets.push(op);
   }
 
   const e3s = [...byId.values()]
@@ -247,10 +276,15 @@ export const useE3Activity = () => {
     for (const op of e3.committee)
       (byOperator[op] ??= []).push({ e3, role: "committee", obligated: e3.obligated.includes(op) });
     for (const op of e3.candidates) (byOperator[op] ??= []).push({ e3, role: "candidate", obligated: false });
+    for (const op of e3.tickets)
+      if (!e3.committee.includes(op) && !e3.candidates.includes(op))
+        (byOperator[op] ??= []).push({ e3, role: "ticket", obligated: false });
   }
 
   return {
     data: q.data,
+    /** The newest E3 in the window: what every node is measured against first. */
+    latest: q.data?.e3s[0],
     /** requestsPaused() on the contract; falls back to the last RequestsPausedSet log. */
     paused: paused.data ?? (q.data ? q.data.pausedSinceBlock !== undefined : undefined),
     /** Keyed by lower-cased operator, newest E3 first. */
