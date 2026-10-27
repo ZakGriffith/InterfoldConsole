@@ -130,7 +130,7 @@ export const NetworkOwners = () => {
                 {th(
                   "rewards",
                   "FOLD rewards",
-                  "IPP-001 payouts: settled epochs plus the running epoch's estimate, from rewards.theinterfold.com. Click to sort.",
+                  "IPP-001 entitlement from rewards.theinterfold.com: closed epochs plus the running epoch's estimate. Earned, not necessarily paid; the owner strip shows payouts. Click to sort.",
                 )}
                 <th />
               </tr>
