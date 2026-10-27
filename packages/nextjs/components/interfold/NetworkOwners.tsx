@@ -6,19 +6,32 @@ import { type Address } from "viem";
 import { useEnsName } from "wagmi";
 import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { useDrawOdds } from "~~/hooks/interfold/useDrawOdds";
+import { ownerFoldRewards, useFoldRewards } from "~~/hooks/interfold/useFoldRewards";
 import { type NetworkOwner, useNetworkOwners } from "~~/hooks/interfold/useNetworkOwners";
 import { fmtTokens, sameAddr } from "~~/utils/interfold/format";
 import { fmtOdds } from "~~/utils/interfold/odds";
 
-type SortKey = "nodes" | "tickets" | "odds" | "bonded";
+type SortKey = "nodes" | "tickets" | "odds" | "bonded" | "rewards";
 
-const cmp = (a: NetworkOwner, b: NetworkOwner, key: SortKey, odds: Record<string, number>) => {
+const cmp = (
+  a: NetworkOwner,
+  b: NetworkOwner,
+  key: SortKey,
+  odds: Record<string, number>,
+  rewards: (owner: Address) => bigint,
+) => {
   if (key === "odds") {
     const d = (odds[b.owner.toLowerCase()] ?? 0) - (odds[a.owner.toLowerCase()] ?? 0);
     if (d !== 0) return d > 0 ? 1 : -1;
   }
   const d =
-    key === "nodes" ? BigInt(b.nodes - a.nodes) : key === "bonded" ? b.bonded - a.bonded : b.tickets - a.tickets;
+    key === "nodes"
+      ? BigInt(b.nodes - a.nodes)
+      : key === "bonded"
+        ? b.bonded - a.bonded
+        : key === "rewards"
+          ? rewards(b.owner) - rewards(a.owner)
+          : b.tickets - a.tickets;
   if (d !== 0n) return d > 0n ? 1 : -1;
   return b.nodes - a.nodes || (b.tickets > a.tickets ? 1 : b.tickets < a.tickets ? -1 : 0);
 };
@@ -28,13 +41,26 @@ export const NetworkOwners = () => {
   const { owners: tracked, addOwner, removeOwner } = useConsole();
   const net = useNetworkOwners();
   const odds = useDrawOdds();
+  const { data: tracker } = useFoldRewards();
   const [sort, setSort] = useState<SortKey>("tickets");
   const [onlyTracked, setOnlyTracked] = useState(false);
 
+  /** Settled plus accruing FOLD from IPP-001, per owner; undefined until the tracker file loads. */
+  const foldRewards = useMemo(() => {
+    if (!tracker) return undefined;
+    const by: Record<string, bigint> = {};
+    for (const o of net.owners) {
+      const r = ownerFoldRewards(tracker, o.owner);
+      by[o.owner.toLowerCase()] = r ? r.settled + (r.current?.payout ?? 0n) : 0n;
+    }
+    return by;
+  }, [tracker, net.owners]);
+
   const rows = useMemo(() => {
     const list = onlyTracked ? net.owners.filter(o => tracked.some(t => sameAddr(t, o.owner))) : net.owners;
-    return [...list].sort((a, b) => cmp(a, b, sort, odds.byOwner));
-  }, [net.owners, sort, onlyTracked, tracked, odds.byOwner]);
+    const rewardOf = (a: Address) => foldRewards?.[a.toLowerCase()] ?? 0n;
+    return [...list].sort((a, b) => cmp(a, b, sort, odds.byOwner, rewardOf));
+  }, [net.owners, sort, onlyTracked, tracked, odds.byOwner, foldRewards]);
 
   const totals = net.owners.reduce(
     (t, o) => ({ nodes: t.nodes + o.nodes, eligible: t.eligible + o.eligible, tickets: t.tickets + o.tickets }),
@@ -101,6 +127,11 @@ export const NetworkOwners = () => {
                   `Chance of a seat in the next E3: ${odds.seats} seats, at most one per owner, if every eligible node enters. Click to sort.`,
                 )}
                 {th("bonded", "FOLD bonded", "FOLD collateral across its nodes. Click to sort.")}
+                {th(
+                  "rewards",
+                  "FOLD rewards",
+                  "IPP-001 payouts: settled epochs plus the running epoch's estimate, from rewards.theinterfold.com. Click to sort.",
+                )}
                 <th />
               </tr>
             </thead>
@@ -110,6 +141,7 @@ export const NetworkOwners = () => {
                   key={o.owner}
                   row={o}
                   odds={odds.ready ? fmtOdds(odds.byOwner[o.owner.toLowerCase()] ?? 0) : "…"}
+                  rewards={foldRewards ? fmtTokens(foldRewards[o.owner.toLowerCase()]) : "…"}
                   tracked={tracked.some(t => sameAddr(t, o.owner))}
                   onTrack={addOwner}
                   onUntrack={removeOwner}
@@ -126,12 +158,14 @@ export const NetworkOwners = () => {
 const OwnerRow = ({
   row: o,
   odds,
+  rewards,
   tracked,
   onTrack,
   onUntrack,
 }: {
   row: NetworkOwner;
   odds: string;
+  rewards: string;
   tracked: boolean;
   onTrack: (a: Address) => void;
   onUntrack: (a: Address) => void;
@@ -152,6 +186,7 @@ const OwnerRow = ({
       <td className="if-num">{o.tickets.toString()}</td>
       <td className="if-num">{odds}</td>
       <td className="if-num">{fmtTokens(o.bonded)}</td>
+      <td className="if-num">{rewards}</td>
       <td className="if-num">
         <button
           type="button"

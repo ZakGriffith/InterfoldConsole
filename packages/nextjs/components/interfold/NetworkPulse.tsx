@@ -1,6 +1,7 @@
 "use client";
 
 import { E3, E3_FAILED, e3Outcome, useE3Activity } from "~~/hooks/interfold/useE3Activity";
+import { useFoldRewards } from "~~/hooks/interfold/useFoldRewards";
 import { useNetworkPulse } from "~~/hooks/interfold/useNetworkPulse";
 import { fmtCompact, fmtDate, fmtTokens } from "~~/utils/interfold/format";
 
@@ -15,7 +16,10 @@ const Tile = ({ value, label, title }: { value: string; label: string; title?: s
 export const NetworkPulse = () => {
   const { data: n } = useNetworkPulse();
   const e3 = useE3Activity();
+  const { data: tracker } = useFoldRewards();
   const e3s = e3.data?.e3s;
+  const epoch = tracker?.epochs.find(e => e.status === "in-progress");
+  const settledPool = tracker?.epochs.filter(e => e.status === "complete").reduce((t, e) => t + BigInt(e.poolWei), 0n);
   const latest = e3s?.[0];
   const failedCount = (all: E3[]) => {
     const failed = all.filter(e => e.stage === E3_FAILED).length;
@@ -53,6 +57,13 @@ export const NetworkPulse = () => {
             value={e3s.length.toLocaleString()}
             label={e3.paused ? "E3s requested · paused" : "E3s requested"}
             title={e3.paused ? `${e3Title} New requests are paused by the Interfold team.` : e3Title}
+          />
+        )}
+        {tracker && epoch && (
+          <Tile
+            value={`${epoch.index} / ${tracker.program.epochs}`}
+            label="rewards epoch"
+            title={`IPP-001: ${fmtCompact(BigInt(tracker.program.totalPool))} FOLD to ciphernode operators over ${tracker.program.epochs} biweekly epochs. Epoch ${epoch.index} pays ${fmtCompact(BigInt(epoch.poolWei))} FOLD, ${fmtDate(epoch.startTs)} to ${fmtDate(epoch.endTs)}; ${fmtCompact(settledPool)} FOLD settled so far.`}
           />
         )}
       </div>
