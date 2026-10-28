@@ -9,9 +9,11 @@ const pct = (part: bigint, whole: bigint) => (whole === 0n ? 0 : Number((part * 
 const fmtDay = (unix: number) => new Date(unix * 1000).toLocaleDateString(undefined, { dateStyle: "medium" });
 
 /**
- * One line under the owner strip: how much of the owner's locked FOLD (the airdrop) has unlocked so far,
- * and how much of that is still in the wallet to spend.
+ * One line under the owner strip: how much of the owner's vesting FOLD (the airdrop) has unlocked so far,
+ * and how much of that is still in the wallet to spend. Allocations that unlocked in full at TGE (an
+ * auction purchase) are named separately so they do not read as vesting.
  */
+const isTgeCliff = (policy: string) => policy.startsWith("TGE_");
 export const UnlockStrip = ({ owner }: { owner: Address }) => {
   const { data: u } = useFoldUnlock(owner);
   const { funds } = useConsole();
@@ -21,11 +23,17 @@ export const UnlockStrip = ({ owner }: { owner: Address }) => {
   const done = u.lockedNow === 0n;
   const next30 = u.unlockedIn30d - u.unlockedNow;
   const p = pct(u.unlockedNow, u.total);
+  const atTge = u.alreadyUnlocked > 0n && u.alreadyUnlockedPolicies.every(isTgeCliff);
 
   return (
-    <div className="if-unlock" title={`Lock policy: ${u.policies.join(", ")}. Locked FOLD still counts for bonding.`}>
+    <div
+      className="if-unlock"
+      title={`Vesting policy: ${u.policies.join(", ")}. Locked FOLD still counts for bonding.${
+        u.alreadyUnlocked > 0n ? ` Not included: ${u.alreadyUnlockedPolicies.join(", ")} (already unlocked).` : ""
+      }`}
+    >
       <div className="if-unlock__row">
-        <span className="if-eyebrow">FOLD unlock</span>
+        <span className="if-eyebrow">FOLD vesting</span>
         <span className="if-unlock__main">
           <span className="if-mono">{fmtTokens(u.unlockedNow)}</span> of{" "}
           <span className="if-mono">{fmtTokens(u.total)}</span> unlocked
@@ -34,6 +42,12 @@ export const UnlockStrip = ({ owner }: { owner: Address }) => {
         {funds && (
           <span className="if-unlock__held" title="Unlocked FOLD still in the wallet (transferableBalanceOf)">
             <span className="if-mono">{fmtTokens(funds.foldTransferable)}</span> still transferable
+          </span>
+        )}
+        {u.alreadyUnlocked > 0n && (
+          <span className="if-unlock__held" title="Separate allocation with no vesting; not counted in the schedule">
+            <span className="if-mono">{fmtTokens(u.alreadyUnlocked)}</span> more{" "}
+            {atTge ? "unlocked at TGE, not vesting" : "already unlocked, not vesting"}
           </span>
         )}
         {!done && (

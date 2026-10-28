@@ -15,7 +15,11 @@ type Policy = { holdUntil: bigint; unlock: Curve };
 type LockEntry = { policyId: Hex; amount: bigint; policy: Policy | undefined };
 
 export type FoldUnlock = {
-  /** Sum of every lock entry: what the schedule covers, whether or not it is still in the wallet. */
+  /**
+   * Sum of the lock entries still unlocking: what the schedule covers, whether or not it is still in
+   * the wallet. Entries that have fully unlocked (a TGE cliff that has passed) are left out so an
+   * auction purchase does not read as part of the airdrop's vesting.
+   */
   total: bigint;
   lockedNow: bigint;
   unlockedNow: bigint;
@@ -24,6 +28,9 @@ export type FoldUnlock = {
   /** Unix seconds when the last lock finishes. */
   fullyUnlockedAt: number | undefined;
   policies: string[];
+  /** Lock entries already unlocked in full, and so not part of the schedule above. */
+  alreadyUnlocked: bigint;
+  alreadyUnlockedPolicies: string[];
 };
 
 /** Mirrors InterfoldToken._lockedAmount so projections match lockedBalanceAt. */
@@ -113,16 +120,20 @@ export const useFoldUnlock = (owner: Address | undefined) => {
       unlockedIn30d: 0n,
       fullyUnlockedAt: undefined,
       policies: [],
+      alreadyUnlocked: 0n,
+      alreadyUnlockedPolicies: [],
     };
     if (rawLocks.length === 0) return empty;
     const policiesOk = !!policies.data && policies.data.every(x => x.status === "success");
     if (policyIds.length > 0 && !policiesOk) return undefined;
     const byId = new Map<Hex, Policy>();
     policyIds.forEach((id, i) => byId.set(id, policies.data![i].result as unknown as Policy));
-    const locks: LockEntry[] = rawLocks.map(l => ({ ...l, policy: byId.get(l.policyId) }));
+    const all: LockEntry[] = rawLocks.map(l => ({ ...l, policy: byId.get(l.policyId) }));
+    const ts = BigInt(now);
+    const locks = all.filter(l => lockedAmount(l, tge, noMoreLocks, ts) > 0n);
+    const done = all.filter(l => lockedAmount(l, tge, noMoreLocks, ts) === 0n);
 
     const sum = (f: (l: LockEntry) => bigint) => locks.reduce((acc, l) => acc + f(l), 0n);
-    const ts = BigInt(now);
     const total = sum(l => l.amount);
     const lockedNow = sum(l => lockedAmount(l, tge, noMoreLocks, ts));
     const lockedIn30d = sum(l => lockedAmount(l, tge, noMoreLocks, ts + 30n * 86400n));
@@ -134,6 +145,8 @@ export const useFoldUnlock = (owner: Address | undefined) => {
       unlockedIn30d: total - lockedIn30d,
       fullyUnlockedAt: end === 0n ? undefined : Number(end),
       policies: [...new Set(locks.map(l => policyName(l.policyId)))],
+      alreadyUnlocked: done.reduce((acc, l) => acc + l.amount, 0n),
+      alreadyUnlockedPolicies: [...new Set(done.map(l => policyName(l.policyId)))],
     };
   }, [headOk, rawLocks, policyIds, policies.data, tge, noMoreLocks, now]);
 
