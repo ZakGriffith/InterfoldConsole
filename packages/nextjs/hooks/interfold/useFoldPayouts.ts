@@ -8,15 +8,18 @@ import { scanLogs } from "~~/utils/interfold/discovery";
 import { sameAddr } from "~~/utils/interfold/format";
 
 /**
- * IPP-001 payouts are not plain transfers: the Foundation treasury Safe approves the vote escrow and
- * calls createLockFor per operator, so each reward lands as a 30-day escrow lock in the bond owner's
- * name (the Safe payloads on rewards.theinterfold.com spell this out). A payout therefore shows up as
- * FOLD moving treasury -> escrow in a tx that mints a lock NFT to the recipient. Verified 2026-10-27
- * against an ordinary self-lock: Deposit(depositor, tokenId, startTs indexed; amount, totalLocked)
- * on the escrow, and an ERC-721 mint on the lock NFT contract in the same receipt.
+ * IPP-001 payouts are not plain transfers: a Foundation Safe approves the vote escrow and calls
+ * createLockFor per operator, so each reward lands as an escrow lock in the bond owner's name (the
+ * Safe payloads on rewards.theinterfold.com spell this out). A payout therefore shows up as FOLD
+ * moving payer -> escrow in a tx that mints a lock NFT to the recipient: Deposit(depositor, tokenId,
+ * startTs indexed; amount, totalLocked) on the escrow and an ERC-721 mint in the same receipt.
+ * Epochs 1-5 were paid on 2026-10-29 from 0x5429…c018, not the 0x8B43… treasury the payloads named,
+ * so both are watched.
  */
-const TREASURY: readonly Address[] = ["0x8B43b2852fc5031D01DDfCDF702973D93A2FF593"];
-const LOCK_NFT: Address = "0xf3eee0f5e721b8c0073c8d85bf26a3d6ec293a0e";
+const PAYERS: readonly Address[] = [
+  "0x8B43b2852fc5031D01DDfCDF702973D93A2FF593",
+  "0x5429D8c7fD14023f3c414126F94BbE25A05fC018",
+];
 
 const ERC20_TRANSFER = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
 const NFT_TRANSFER = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)");
@@ -45,7 +48,7 @@ const fetchPayouts = async (client: NonNullable<ReturnType<typeof usePublicClien
       client.getLogs({
         address: FOLD.address,
         event: ERC20_TRANSFER,
-        args: { from: [...TREASURY], to: GOVERNANCE.escrow.address },
+        args: { from: [...PAYERS], to: GOVERNANCE.escrow.address },
         fromBlock,
         toBlock,
       }),
@@ -64,7 +67,7 @@ const fetchPayouts = async (client: NonNullable<ReturnType<typeof usePublicClien
     const amounts = new Map<bigint, bigint>();
     for (const log of receipt.logs) {
       try {
-        if (sameAddr(log.address, LOCK_NFT)) {
+        if (sameAddr(log.address, GOVERNANCE.lockNft.address)) {
           const { args } = decodeEventLog({ abi: [NFT_TRANSFER], data: log.data, topics: log.topics });
           if (args.from === "0x0000000000000000000000000000000000000000")
             owners.set(args.tokenId, args.to.toLowerCase());
@@ -90,7 +93,7 @@ const fetchPayouts = async (client: NonNullable<ReturnType<typeof usePublicClien
   return out;
 };
 
-/** Every IPP-001 escrow lock the treasury has created so far, shared across owners. */
+/** Every IPP-001 escrow lock the Foundation has created so far, shared across owners. */
 export const useFoldPayouts = () => {
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
   return useQuery({

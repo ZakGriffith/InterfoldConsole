@@ -2,7 +2,7 @@ import { type Abi, type AbiFunction, type Address, type Hex, encodeFunctionData,
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type OwnerFunds } from "~~/hooks/interfold/useOwnerFunds";
 import { type RegistryParams } from "~~/hooks/interfold/useRegistryParams";
-import { FOLD, REGISTRY, SUSDS, TICKET_TOKEN } from "~~/utils/interfold/contracts";
+import { FOLD, GOVERNANCE, REGISTRY, SUSDS, TICKET_TOKEN } from "~~/utils/interfold/contracts";
 import { fmtTokens, maxBig, sameAddr } from "~~/utils/interfold/format";
 
 /** One inner call of a Safe MultiSend batch (always value 0 here). */
@@ -27,7 +27,11 @@ export const contractName = (a: Address): string =>
         ? "sUSDS"
         : sameAddr(a, TICKET_TOKEN.address)
           ? "InterfoldTicketToken"
-          : a;
+          : sameAddr(a, GOVERNANCE.escrow.address)
+            ? "VotingEscrow"
+            : sameAddr(a, GOVERNANCE.lockNft.address)
+              ? "Lock NFT"
+              : a;
 
 export const makeCall = (
   to: Address,

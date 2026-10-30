@@ -133,10 +133,39 @@ export const GOVERNANCE = {
     address: "0xDbCaeec5B040A134314FfD43aA2ca0D16006f963",
     abi: parseAbi(["function bonded(address account) view returns (uint256)"]),
   },
-  /** Aragon voting escrow: FOLD locked here as lock NFTs; 30-day cooldown to withdraw. */
+  /**
+   * Aragon voting escrow: FOLD locked here as lock NFTs. Leaving is two steps per lock: approve the
+   * escrow for the NFT and beginWithdrawal (the lock stops voting and waits in the exit queue), then
+   * withdraw once the queue's cooldown has passed, which pays the FOLD to whoever began the exit.
+   */
   escrow: {
     address: "0x71360F335e4Ec9c010e29bA7171bc62c9B4c1F12",
-    abi: parseAbi(["function votingPowerForAccount(address account) view returns (uint256)"]),
+    abi: parseAbi([
+      "function votingPowerForAccount(address account) view returns (uint256)",
+      "function locked(uint256 tokenId) view returns ((uint208 amount, uint48 start))",
+      "function beginWithdrawal(uint256 tokenId)",
+      "function withdraw(uint256 tokenId)",
+    ]),
+  },
+  /** One lock NFT per escrow lock: owned by the beneficiary, parked in the escrow during an exit, burned on withdraw. */
+  lockNft: {
+    address: "0xF3eeE0f5E721b8c0073C8d85bf26A3d6EC293A0E",
+    abi: parseAbi([
+      "function ownerOf(uint256 tokenId) view returns (address)",
+      "function getApproved(uint256 tokenId) view returns (address)",
+      "function approve(address to, uint256 tokenId)",
+    ]),
+  },
+  /** Where a lock waits out the cooldown between beginWithdrawal and withdraw. */
+  exitQueue: {
+    address: "0x8095C0B90Be4abCBF5CA7371f588fe1637E02b7f",
+    abi: parseAbi([
+      // The entry has more fields; the first three are all the console needs (exit ends at queuedAt + cooldown).
+      "function queue(uint256 tokenId) view returns ((address holder, uint48 queuedAt, uint48 cooldown))",
+      "function canExit(uint256 tokenId) view returns (bool)",
+      "function cooldown() view returns (uint48)",
+      "function feePercent() view returns (uint256)",
+    ]),
   },
   /** The escrow's IVotes adapter (escrow.ivotesAdapter()): holds the delegation for locked FOLD. */
   escrowVotes: {
