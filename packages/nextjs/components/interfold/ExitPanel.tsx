@@ -8,13 +8,13 @@ import { useConsole } from "~~/hooks/interfold/ConsoleContext";
 import { type OperatorStatus } from "~~/hooks/interfold/useFleetStatus";
 import { type WriteParams } from "~~/hooks/interfold/useSafeAwareWrite";
 import { REGISTRY } from "~~/utils/interfold/contracts";
-import { fmtDuration, fmtTokens, parseTokenInput, sameAddr } from "~~/utils/interfold/format";
+import { fmtDuration, fmtTokens, parseTokenInput, sameAddr, shortAddr } from "~~/utils/interfold/format";
 
 type Props = { operator: Address; status?: OperatorStatus; open?: boolean };
 
 /** Destructive path, collapsed unless `open`: remove tickets, unbond, deregister, claim. */
 export const ExitPanel = ({ operator, status: s, open = false }: Props) => {
-  const { owner, params: p, connected } = useConsole();
+  const { owner, params: p, connected, canWriteAsOwner, onMainnet, ownerIsContract } = useConsole();
   const [ticketAmt, setTicketAmt] = useState("");
   const [bondAmt, setBondAmt] = useState("");
 
@@ -75,10 +75,22 @@ export const ExitPanel = ({ operator, status: s, open = false }: Props) => {
             ["Exit delay", fmtDuration(p?.exitDelay)],
           ]}
         />
+        {!canWriteAsOwner && (
+          <Note kind="bad">
+            The buttons below are off because{" "}
+            {!connected
+              ? "no wallet is connected"
+              : !onMainnet
+                ? "the wallet is not on Ethereum mainnet"
+                : `the connected wallet ${shortAddr(connected)} is not this node's bond owner`}
+            . Exits have to be sent by the bond owner {shortAddr(owner)}
+            {ownerIsContract ? ": connect as that Safe (open this console as a Safe App, or use WalletConnect)" : ""}.
+          </Note>
+        )}
         <Note kind="warn">
-          Every exit is blocked while a slash proposal is open (<code>OperatorUnderSlash</code>), and nothing here can
-          be undone: queued assets wait the full exit delay before <code>claimExitsFor</code> pays them to the bond
-          owner.
+          Nothing here can be undone: queued assets wait the full exit delay before <code>claimExitsFor</code> pays them
+          to the bond owner. If a slash proposal is ever open against the node, these calls revert with{" "}
+          <code>OperatorUnderSlash</code> until it resolves.
         </Note>
       </div>
 
